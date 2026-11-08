@@ -1,6 +1,17 @@
 -- Phase 5: authenticated, company-scoped sync endpoint with server-side LWW.
 -- Apply after 05_phase4_expenses_archives.sql. No previously applied migration is modified.
 
+-- Pulls are scoped by company and ordered by update cursor. Include tombstones.
+create index if not exists workers_company_sync_idx on public.workers(company_id, updated_at, id);
+create index if not exists cash_transactions_company_sync_idx on public.cash_transactions(company_id, updated_at, id);
+create index if not exists cash_opening_company_sync_idx on public.cash_opening_balances(company_id, updated_at, id);
+create index if not exists wages_company_sync_idx on public.wages(company_id, updated_at, id);
+create index if not exists wage_payments_company_sync_idx on public.wage_payments(company_id, created_at, id);
+create index if not exists advances_company_sync_idx on public.advances(company_id, updated_at, id);
+create index if not exists social_security_company_sync_idx on public.social_security_declarations(company_id, updated_at, id);
+create index if not exists expenses_company_sync_idx on public.expenses(company_id, updated_at, id);
+create index if not exists archives_company_sync_idx on public.archives(company_id, updated_at, id);
+
 create or replace function public.sync_apply_record(
   p_entity text,
   p_record jsonb
