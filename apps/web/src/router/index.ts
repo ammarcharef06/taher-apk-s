@@ -23,14 +23,22 @@ const routes: RouteRecordRaw[] = [
   {
     path: "/workers",
     name: "workers",
-    component: () => import("../views/PlaceholderView.vue"),
-    meta: { requiresAuth: true, title: "العمال" }
+    component: () => import("../views/WorkersView.vue"),
+    meta: {
+      requiresAuth: true,
+      title: "العمال",
+      allowedRoles: ["company_admin", "manager"]
+    }
   },
   {
     path: "/cash",
     name: "cash",
-    component: () => import("../views/PlaceholderView.vue"),
-    meta: { requiresAuth: true, title: "الصندوق" }
+    component: () => import("../views/CashView.vue"),
+    meta: {
+      requiresAuth: true,
+      title: "الصندوق",
+      allowedRoles: ["company_admin", "manager", "data_entry"]
+    }
   },
   {
     path: "/wages",
@@ -105,6 +113,14 @@ router.beforeEach(async (to) => {
 
   if (to.meta.requiresAuth && auth.needsSetup) {
     return { name: "setup" };
+  }
+
+  const allowedRoles = to.meta.allowedRoles as string[] | undefined;
+  if (
+    allowedRoles &&
+    (!auth.activeRole || !allowedRoles.includes(auth.activeRole))
+  ) {
+    return { name: "dashboard" };
   }
 
   return true;

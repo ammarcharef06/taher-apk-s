@@ -17,14 +17,14 @@ const navigation = [
 </script>
 
 <template>
-  <aside class="hidden w-64 shrink-0 lg:block">
-    <nav class="panel sticky top-24 space-y-1 p-3" aria-label="القائمة الرئيسية">
-      <p class="px-3 pb-3 pt-2 text-xs font-bold text-slate-400">القائمة الرئيسية</p>
+  <aside class="w-full shrink-0 lg:w-64">
+    <nav class="panel flex gap-1 overflow-x-auto p-2 lg:sticky lg:top-24 lg:flex-col lg:space-y-1 lg:p-3" aria-label="القائمة الرئيسية">
+      <p class="hidden px-3 pb-3 pt-2 text-xs font-bold text-slate-400 lg:block">القائمة الرئيسية</p>
       <RouterLink
         v-for="item in navigation"
         :key="item.name"
         :to="{ name: item.name }"
-        class="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium transition"
+        class="flex shrink-0 items-center gap-2 whitespace-nowrap rounded-xl px-3 py-3 text-sm font-medium transition lg:gap-3"
         :class="route.name === item.name ? 'bg-brand-50 text-brand-700' : 'text-slate-600 hover:bg-slate-50'"
       >
         <span class="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-100 text-base">{{ item.icon }}</span>

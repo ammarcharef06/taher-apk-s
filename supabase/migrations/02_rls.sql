@@ -180,7 +180,7 @@ on public.workers for select to authenticated
 using (
   public.has_company_role(
     company_id,
-    array['company_admin', 'manager', 'accountant', 'data_entry']::public.app_role[]
+    array['company_admin', 'manager']::public.app_role[]
   )
 );
 
@@ -202,7 +202,7 @@ on public.cash_transactions for select to authenticated
 using (
   public.has_company_role(
     company_id,
-    array['company_admin', 'manager', 'accountant', 'data_entry']::public.app_role[]
+    array['company_admin', 'manager', 'data_entry']::public.app_role[]
   )
 );
 
@@ -229,7 +229,7 @@ on public.cash_opening_balances for select to authenticated
 using (
   public.has_company_role(
     company_id,
-    array['company_admin', 'manager', 'accountant']::public.app_role[]
+    array['company_admin', 'manager']::public.app_role[]
   )
 );
 

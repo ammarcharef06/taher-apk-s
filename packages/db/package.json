@@ -3,16 +3,17 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "main": "./src/local.db.ts",
-  "types": "./src/local.db.ts",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
   "exports": {
     ".": {
-      "types": "./src/local.db.ts",
-      "import": "./src/local.db.ts",
-      "default": "./src/local.db.ts"
+      "types": "./src/index.ts",
+      "import": "./src/index.ts",
+      "default": "./src/index.ts"
     }
   },
   "dependencies": {
+    "@taher/core": "workspace:*",
     "dexie": "^4.0.10"
   }
 }

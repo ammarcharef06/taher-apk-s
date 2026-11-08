@@ -10,7 +10,8 @@
   "scripts": {
     "dev": "pnpm --filter @taher/web dev",
     "build": "pnpm --filter @taher/web build",
-    "typecheck": "pnpm --filter @taher/web typecheck",
-    "preview": "pnpm --filter @taher/web preview"
+    "typecheck": "pnpm --filter @taher/core typecheck && pnpm --filter @taher/web typecheck",
+    "preview": "pnpm --filter @taher/web preview",
+    "test": "pnpm --filter @taher/core test"
   }
 }
