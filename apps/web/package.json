@@ -12,11 +12,13 @@
   "dependencies": {
     "@headlessui/vue": "^1.7.23",
     "@supabase/supabase-js": "^2.49.1",
+    "@taher/core": "workspace:*",
     "@taher/db": "workspace:*",
+    "chart.js": "^4.4.7",
     "pinia": "^2.3.0",
     "vue": "^3.5.13",
-    "vue-router": "^4.5.0",
-    "@taher/core": "workspace:*"
+    "vue-i18n": "^11.1.2",
+    "vue-router": "^4.5.0"
   },
   "devDependencies": {
     "@types/node": "^20.17.19",
