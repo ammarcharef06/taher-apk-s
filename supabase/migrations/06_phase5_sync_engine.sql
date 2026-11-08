@@ -136,7 +136,7 @@ begin
     'coalesce((jsonb_populate_record(null::public.%I, $1)).created_at, now()), %s ' ||
     'on conflict (id) do update set %s ' ||
     'where current_row.company_id = excluded.company_id ' ||
-    'and current_row.updated_at <= excluded.updated_at ' ||
+    'and current_row.updated_at < excluded.updated_at ' ||
     'returning to_jsonb(current_row)',
     p_entity, v_columns, p_entity, p_entity, p_entity, v_select, v_updates
   );
