@@ -1,9 +1,26 @@
 <script setup lang="ts">
+import { computed, watch } from "vue";
 import { useRouter } from "vue-router";
 import { useAuthStore } from "../../stores/auth.store";
+import { useSyncStore } from "../../stores/sync.store";
 
 const router = useRouter();
 const auth = useAuthStore();
+const sync = useSyncStore();
+const syncLabel = computed(() => ({
+  idle: "غير متزامن",
+  syncing: "جارٍ المزامنة",
+  online: "متصل ومتزامن",
+  offline: "دون اتصال",
+  error: "توجد عناصر معلّقة"
+}[sync.status]));
+watch(
+  [() => auth.activeCompany?.id, () => auth.activeRole],
+  ([companyId, role]) => {
+    if (companyId) void sync.initialize(companyId, role ?? "");
+  },
+  { immediate: true }
+);
 
 async function logout(): Promise<void> {
   try {
@@ -28,6 +45,26 @@ async function logout(): Promise<void> {
       </RouterLink>
 
       <div class="flex items-center gap-3">
+        <button
+          v-if="auth.activeCompany"
+          type="button"
+          class="hidden items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-wait disabled:opacity-60 sm:flex"
+          :disabled="sync.isBusy || sync.status === 'offline'"
+          :title="sync.errorMessage || 'مزامنة البيانات المحلية مع السحابة'"
+          @click="sync.syncNow"
+        >
+          <span
+            class="h-2 w-2 rounded-full"
+            :class="{
+              'bg-emerald-500': sync.status === 'online',
+              'bg-amber-500': sync.status === 'syncing',
+              'bg-slate-400': sync.status === 'offline' || sync.status === 'idle',
+              'bg-red-500': sync.status === 'error'
+            }"
+          />
+          <span>{{ syncLabel }}</span>
+          <span v-if="sync.pending > 0" class="rounded-full bg-amber-100 px-1.5 py-0.5 text-amber-800">{{ sync.pending }}</span>
+        </button>
         <div class="hidden text-left sm:block">
           <p class="text-sm font-semibold text-slate-800">{{ auth.profile?.display_name || auth.user?.email }}</p>
           <p class="text-xs text-slate-500">{{ auth.activeCompany?.name || "مدير النظام" }}</p>
