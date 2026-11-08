@@ -124,7 +124,7 @@ async function applyRemoteRecord(
       .and((item) => item.entity === entity && item.record_id === localRecordId)
       .toArray();
 
-    if (local && queued.length > 0 && forceServer && acceptedClientUpdatedAt) {
+    if (local && queued.length > 0 && acceptedClientUpdatedAt) {
       const localTime = Date.parse(String(local.updated_at ?? local._updated_at ?? local.created_at ?? ""));
       const acceptedTime = Date.parse(acceptedClientUpdatedAt);
       if (Number.isFinite(localTime) && Number.isFinite(acceptedTime) && localTime > acceptedTime) {
@@ -208,7 +208,13 @@ async function pushPending(companyId: string): Promise<{ pushed: number; conflic
       const remote = asRecord(response.record);
       if (response.applied === false && item.entity !== "wage_payments") {
         conflicts += 1;
-        await applyRemoteRecord(companyId, item.entity as SyncEntity, remote);
+        await applyRemoteRecord(
+          companyId,
+          item.entity as SyncEntity,
+          remote,
+          false,
+          String(payload.updated_at ?? payload.created_at ?? "")
+        );
       } else {
         await applyRemoteRecord(
           companyId,
