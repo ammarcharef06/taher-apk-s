@@ -43,14 +43,32 @@ const routes: RouteRecordRaw[] = [
   {
     path: "/wages",
     name: "wages",
-    component: () => import("../views/PlaceholderView.vue"),
-    meta: { requiresAuth: true, title: "الأجور" }
+    component: () => import("../views/WagesView.vue"),
+    meta: {
+      requiresAuth: true,
+      title: "الأجور",
+      allowedRoles: ["company_admin", "manager", "accountant"]
+    }
   },
   {
     path: "/advances",
     name: "advances",
-    component: () => import("../views/PlaceholderView.vue"),
-    meta: { requiresAuth: true, title: "التسبيقات" }
+    component: () => import("../views/AdvancesView.vue"),
+    meta: {
+      requiresAuth: true,
+      title: "التسبيقات",
+      allowedRoles: ["company_admin", "manager", "accountant", "data_entry"]
+    }
+  },
+  {
+    path: "/social-security",
+    name: "socialSecurity",
+    component: () => import("../views/SocialSecurityView.vue"),
+    meta: {
+      requiresAuth: true,
+      title: "CNAS / CASNOS",
+      allowedRoles: ["company_admin", "manager", "accountant"]
+    }
   },
   {
     path: "/expenses",

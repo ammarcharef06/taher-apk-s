@@ -110,6 +110,21 @@ export interface LocalWage extends SyncMetadata {
   deleted_at: string | null;
 }
 
+export interface LocalWagePayment {
+  id: string;
+  company_id: string;
+  wage_id: string;
+  worker_id: string;
+  payment_date: string;
+  amount: number;
+  payment_method: "cash" | "bank";
+  cash_transaction_id: string | null;
+  receipt_number: string;
+  notes: string | null;
+  created_by: string | null;
+  created_at: string;
+}
+
 export interface LocalAdvance extends SyncMetadata {
   id: string;
   company_id: string;
@@ -269,6 +284,7 @@ class TaherLocalDatabase extends Dexie {
   cashTransactions!: Table<LocalCashTransaction, string>;
   cashOpeningBalances!: Table<LocalCashOpeningBalance, string>;
   wages!: Table<LocalWage, string>;
+  wagePayments!: Table<LocalWagePayment, string>;
   advances!: Table<LocalAdvance, string>;
   socialSecurityDeclarations!: Table<LocalSocialSecurityDeclaration, string>;
   expenses!: Table<LocalExpense, string>;
@@ -301,6 +317,10 @@ class TaherLocalDatabase extends Dexie {
       clientSignatures: "&id, company_id, client_id, archive_id, signed_at, _synced, _deleted",
       syncQueue: "++id, company_id, entity, record_id, operation, status, created_at"
     });
+
+    this.version(2).stores({
+      wagePayments: "&id, company_id, wage_id, worker_id, payment_date, receipt_number, [company_id+wage_id], [worker_id+payment_date]"
+    });
   }
 }
 
@@ -329,6 +349,7 @@ export async function clearLocalCompanyData(companyId: string): Promise<void> {
       localDb.cashTransactions,
       localDb.cashOpeningBalances,
       localDb.wages,
+      localDb.wagePayments,
       localDb.advances,
       localDb.socialSecurityDeclarations,
       localDb.expenses,
@@ -347,6 +368,7 @@ export async function clearLocalCompanyData(companyId: string): Promise<void> {
         localDb.cashTransactions.where("company_id").equals(companyId).delete(),
         localDb.cashOpeningBalances.where("company_id").equals(companyId).delete(),
         localDb.wages.where("company_id").equals(companyId).delete(),
+        localDb.wagePayments.where("company_id").equals(companyId).delete(),
         localDb.advances.where("company_id").equals(companyId).delete(),
         localDb.socialSecurityDeclarations.where("company_id").equals(companyId).delete(),
         localDb.expenses.where("company_id").equals(companyId).delete(),

@@ -12,6 +12,7 @@ const allNavigation = [
   { name: "cash", label: "الصندوق", icon: "▣" },
   { name: "wages", label: "الأجور", icon: "د" },
   { name: "advances", label: "التسبيقات", icon: "↗" },
+  { name: "socialSecurity", label: "CNAS / CASNOS", icon: "▤" },
   { name: "expenses", label: "المصاريف والمشتريات", icon: "▤" },
   { name: "archives", label: "الأرشيف", icon: "▧" },
   { name: "reports", label: "التقارير", icon: "▥" },
@@ -27,6 +28,21 @@ const navigation = computed(() =>
       return (
         auth.activeRole === "company_admin" ||
         auth.activeRole === "manager" ||
+        auth.activeRole === "data_entry"
+      );
+    }
+    if (item.name === "wages" || item.name === "socialSecurity") {
+      return (
+        auth.activeRole === "company_admin" ||
+        auth.activeRole === "manager" ||
+        auth.activeRole === "accountant"
+      );
+    }
+    if (item.name === "advances") {
+      return (
+        auth.activeRole === "company_admin" ||
+        auth.activeRole === "manager" ||
+        auth.activeRole === "accountant" ||
         auth.activeRole === "data_entry"
       );
     }
