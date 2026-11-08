@@ -122,3 +122,8 @@ Phase 6 adds offline-first financial reports, dashboard charts, browser-native P
 ## Phase 7 — Platform builds and delivery
 
 The repository now includes a Capacitor Android wrapper, a Tauri 2 Windows wrapper, and three GitHub Actions workflows for Android APK builds, Windows EXE builds, and GitHub Pages deployment. See [docs/PHASE-7-PLATFORM-BUILDS.md](docs/PHASE-7-PLATFORM-BUILDS.md) for setup, required Supabase repository secrets, artifact locations, and validation notes.
+
+
+## Phase 8 — Invoicing and Client Portal
+
+See [docs/PHASE-8-CLIENT-PORTAL.md](docs/PHASE-8-CLIENT-PORTAL.md) for migration order, bearer-link handling, RLS boundaries, deployment requirements and acceptance checks. Apply migration 07 after reviewing its limitations. Token links are private credentials; authenticated client accounts are required for private archive downloads.
