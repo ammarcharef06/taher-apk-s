@@ -69,7 +69,7 @@ create index if not exists invoice_payments_company_invoice_date_idx on public.i
 alter table public.invoices enable row level security;
 alter table public.invoice_items enable row level security;
 alter table public.invoice_payments enable row level security;
-grant select,insert,update,delete on public.invoices,public.invoice_items to authenticated;
+revoke insert,update,delete on public.invoices,public.invoice_items from authenticated;\ngrant select on public.invoices,public.invoice_items to authenticated;
 grant select,insert on public.invoice_payments to authenticated;
 revoke update,delete on public.invoice_payments from authenticated;
 
@@ -121,6 +121,15 @@ create policy client_signatures_insert_client_or_admin on public.client_signatur
  or exists(select 1 from public.clients c where c.id=client_id and c.company_id=client_signatures.company_id and c.user_id=auth.uid()
    and (invoice_id is null or exists(select 1 from public.invoices i where i.id=invoice_id and i.company_id=client_signatures.company_id and i.client_id=client_signatures.client_id)))
 );
+
+drop trigger if exists set_updated_at on public.invoices;
+create trigger set_updated_at before update on public.invoices for each row execute function public.set_updated_at();
+drop trigger if exists write_audit_log on public.invoices;
+create trigger write_audit_log after insert or update or delete on public.invoices for each row execute function public.write_audit_log();
+drop trigger if exists write_audit_log on public.invoice_items;
+create trigger write_audit_log after insert or update or delete on public.invoice_items for each row execute function public.write_audit_log();
+drop trigger if exists write_audit_log on public.invoice_payments;
+create trigger write_audit_log after insert on public.invoice_payments for each row execute function public.write_audit_log();
 
 create or replace function public.recalculate_invoice(p_company_id uuid,p_invoice_id uuid)
 returns void language plpgsql security definer set search_path=public,auth,pg_temp as $$
@@ -175,11 +184,11 @@ for each row execute function public.refresh_invoice_after_payment();
 
 create or replace function public.issue_client_portal_token(p_company_id uuid,p_client_id uuid,p_expires_at timestamptz default null)
 returns text language plpgsql security definer set search_path=public,auth,pg_temp as $$
-declare v_token text:=encode(gen_random_bytes(32),'hex');
+declare v_token text:=encode(extensions.gen_random_bytes(32),'hex');
 begin
  if not public.has_company_role(p_company_id,array['company_admin','manager']::public.app_role[]) then raise exception 'Insufficient portal permissions.' using errcode='42501'; end if;
  if not exists(select 1 from public.clients where id=p_client_id and company_id=p_company_id and deleted_at is null) then raise exception 'Client not found.' using errcode='23503'; end if;
- insert into public.client_access_tokens(company_id,client_id,token_hash,expires_at) values(p_company_id,p_client_id,encode(digest(v_token,'sha256'),'hex'),coalesce(p_expires_at,now()+interval '30 days'));
+ insert into public.client_access_tokens(company_id,client_id,token_hash,expires_at) values(p_company_id,p_client_id,encode(extensions.digest(v_token,'sha256'),'hex'),coalesce(p_expires_at,now()+interval '30 days'));
  return v_token;
 end $$;
 
@@ -188,7 +197,7 @@ returns jsonb language plpgsql security definer set search_path=public,auth,pg_t
 declare v_client uuid; v_company uuid; v_out jsonb;
 begin
  select client_id,company_id into v_client,v_company from public.client_access_tokens
- where token_hash=encode(digest(coalesce(p_token,''),'sha256'),'hex') and revoked_at is null and deleted_at is null and (expires_at is null or expires_at>now());
+ where token_hash=encode(extensions.digest(coalesce(p_token,''),'sha256'),'hex') and revoked_at is null and deleted_at is null and (expires_at is null or expires_at>now());
  if v_client is null then raise exception 'Invalid or expired portal link.' using errcode='28000'; end if;
  select jsonb_build_object('client',jsonb_build_object('id',c.id,'name',c.name,'email',c.email),
  'company',jsonb_build_object('name',co.name,'currency_code',co.currency_code),
@@ -205,7 +214,7 @@ create or replace function public.client_portal_sign(p_token text,p_invoice_id u
 returns uuid language plpgsql security definer set search_path=public,auth,pg_temp as $$
 declare v_client uuid; v_company uuid; v_id uuid;
 begin
- select client_id,company_id into v_client,v_company from public.client_access_tokens where token_hash=encode(digest(coalesce(p_token,''),'sha256'),'hex') and revoked_at is null and deleted_at is null and (expires_at is null or expires_at>now());
+ select client_id,company_id into v_client,v_company from public.client_access_tokens where token_hash=encode(extensions.digest(coalesce(p_token,''),'sha256'),'hex') and revoked_at is null and deleted_at is null and (expires_at is null or expires_at>now());
  if v_client is null then raise exception 'Invalid or expired portal link.' using errcode='28000'; end if;
  if length(trim(coalesce(p_signer_name,'')))<2 or length(coalesce(p_signature_data_url,''))>2000000 or p_signature_data_url !~ '^data:image/png;base64,' then raise exception 'Invalid signature.' using errcode='22023'; end if;
  if not exists(select 1 from public.invoices where id=p_invoice_id and company_id=v_company and client_id=v_client and status not in ('draft','cancelled')) then raise exception 'Invoice not available for signing.' using errcode='42501'; end if;\n if exists(select 1 from public.client_signatures where company_id=v_company and client_id=v_client and invoice_id=p_invoice_id and deleted_at is null) then raise exception 'Invoice has already been signed.' using errcode='23505'; end if;
