@@ -107,10 +107,19 @@ async function applyRemoteRecord(
   }
   const table = TABLES[entity];
   return localDb.transaction("rw", [table, localDb.syncQueue, localDb.correctionLogs], async () => {
-    const local = await table.get(recordId);
+    let local = await table.get(recordId);
+    // Financial inserts may create their archive row server-side before the local
+    // archive queue item arrives. Match that row by its natural source key.
+    if (entity === "archives" && !local && remote.source_id) {
+      local = await localDb.archives
+        .where("[company_id+source_id]")
+        .equals([companyId, String(remote.source_id)])
+        .first();
+    }
+    const localRecordId = String(local?.id ?? recordId);
     const queued = await localDb.syncQueue
       .where("company_id").equals(companyId)
-      .and((item) => item.entity === entity && item.record_id === recordId)
+      .and((item) => item.entity === entity && item.record_id === localRecordId)
       .toArray();
 
     if (local && queued.length > 0) {
@@ -123,6 +132,7 @@ async function applyRemoteRecord(
       await localDb.syncQueue.bulkDelete(queued.flatMap((item) => item.id === undefined ? [] : [item.id]));
     }
 
+    if (local && String(local.id) !== recordId) await table.delete(String(local.id));
     const updatedAt = String(remote.updated_at ?? remote.created_at ?? new Date().toISOString());
     const localOnly = entity === "archives" && local
       ? { file_blob: (local as LocalArchive).file_blob }
