@@ -103,3 +103,12 @@ taher-accounting-ng/
 ├── .github/workflows/        # سير عمل البناء التلقائي (CI/CD)
 ├── pnpm-workspace.yaml
 └── package.json
+
+
+---
+
+## 🔁 Phase 5 — Offline-first Sync Engine
+
+The two-way synchronization implementation, conflict policy, supported entities, and validation procedure are documented in [docs/SYNC-ENGINE.md](docs/SYNC-ENGINE.md).
+
+Apply database migrations in numeric order. Phase 5 adds `supabase/migrations/06_phase5_sync_engine.sql`; it uses the authenticated Supabase session and the existing private `company-archives` Storage bucket.
