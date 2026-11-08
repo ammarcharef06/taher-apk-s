@@ -1,0 +1,16 @@
+{
+  "name": "taher-accounting-ng",
+  "version": "1.0.0",
+  "private": true,
+  "packageManager": "pnpm@10.4.1",
+  "engines": {
+    "node": ">=20.19.0",
+    "pnpm": ">=10.0.0"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @taher/web dev",
+    "build": "pnpm --filter @taher/web build",
+    "typecheck": "pnpm --filter @taher/web typecheck",
+    "preview": "pnpm --filter @taher/web preview"
+  }
+}

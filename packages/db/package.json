@@ -1,0 +1,18 @@
+{
+  "name": "@taher/db",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/local.db.ts",
+  "types": "./src/local.db.ts",
+  "exports": {
+    ".": {
+      "types": "./src/local.db.ts",
+      "import": "./src/local.db.ts",
+      "default": "./src/local.db.ts"
+    }
+  },
+  "dependencies": {
+    "dexie": "^4.0.10"
+  }
+}
