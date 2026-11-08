@@ -9,7 +9,7 @@ For Auth-based client access, create a Supabase Auth user and associate its UUID
 The anonymous token portal uses restricted SECURITY DEFINER RPCs and returns only that token client's non-draft invoices. The token is a credential: anyone holding it can view those invoices and submit a signature. Revoke leaked links immediately.
 
 Production limitations to address before launch:
-- GitHub Pages needs SPA fallback for /portal/<token>; if unavailable, use a host with rewrites or hash routing.
+- The existing Pages workflow copies index.html to 404.html for SPA fallback; verify deep-link refresh at /portal/<token> after deployment.
 - Invoice entry is online-first and is not yet in Dexie offline sync.
 - Payment rows are read-only in the portal; there is no payment-entry UI or cash/bank ledger posting yet. Do not treat these as reconciled accounting postings until ledger integration is implemented and tested.
 - Token portal archive downloads are not exposed. Authenticated linked clients can read attached private archive objects under Storage RLS.
