@@ -38,6 +38,9 @@ const navigation = computed(() =>
         auth.activeRole === "accountant"
       );
     }
+    if (item.name === "expenses" || item.name === "archives") {
+      return ["company_admin", "manager", "accountant", "data_entry"].includes(auth.activeRole ?? "");
+    }
     if (item.name === "advances") {
       return (
         auth.activeRole === "company_admin" ||
