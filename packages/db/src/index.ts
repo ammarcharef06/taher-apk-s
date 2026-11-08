@@ -4,3 +4,5 @@ export * from "./cash.repository";
 export * from "./wages.repository";
 export * from "./advances.repository";
 export * from "./social-security.repository";
+export * from "./expenses.repository";
+export * from "./archives.repository";
