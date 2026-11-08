@@ -22,6 +22,7 @@ declare
   v_applied boolean := false;
   v_payload jsonb;
   v_column record;
+  v_existing_archive_id uuid;
 begin
   if auth.uid() is null then
     raise exception 'Authentication required.' using errcode = '28000';
@@ -81,6 +82,22 @@ begin
   v_payload := p_record - '_synced' - '_updated_at' - '_deleted' - 'file_blob';
   if p_entity = 'expenses' then
     v_payload := v_payload - 'amount_ttc';
+  end if;
+
+  -- Financial-table triggers can create the archive row before its local queue item
+  -- is pushed. Reuse that canonical server ID instead of violating source uniqueness.
+  if p_entity = 'archives'
+     and nullif(v_payload ->> 'source_table', '') is not null
+     and nullif(v_payload ->> 'source_id', '') is not null then
+    select a.id into v_existing_archive_id
+    from public.archives a
+    where a.company_id = v_company_id
+      and a.source_table = v_payload ->> 'source_table'
+      and a.source_id = (v_payload ->> 'source_id')::uuid
+    limit 1;
+    if v_existing_archive_id is not null then
+      v_payload := jsonb_set(v_payload, '{id}', to_jsonb(v_existing_archive_id::text), true);
+    end if;
   end if;
 
   select
