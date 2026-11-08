@@ -107,6 +107,7 @@ begin
       and a.source_id = (v_payload ->> 'source_id')::uuid
     limit 1;
     if v_existing_archive_id is not null then
+      v_record_id := v_existing_archive_id;
       v_payload := jsonb_set(v_payload, '{id}', to_jsonb(v_existing_archive_id::text), true);
     end if;
   end if;
