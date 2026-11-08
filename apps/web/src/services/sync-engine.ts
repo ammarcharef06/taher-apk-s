@@ -13,6 +13,7 @@ import {
   type SyncQueueItem
 } from "@taher/db";
 import { supabase } from "../stores/auth.store";
+import { syncPendingArchiveFiles } from "./archive-storage";
 
 const PAGE_SIZE = 500;
 const TABLES: Record<SyncEntity, Table<any, any>> = {
@@ -133,9 +134,14 @@ async function applyRemoteRecord(
 
     if (local && String(local.id) !== recordId) await table.delete(String(local.id));
     const updatedAt = String(remote.updated_at ?? remote.created_at ?? new Date().toISOString());
-    const localOnly = entity === "archives" && local
-      ? { file_blob: (local as LocalArchive).file_blob }
-      : {};
+    const localArchive = entity === "archives" && local ? local as LocalArchive : null;
+    const localOnly = localArchive ? {
+      file_blob: localArchive.file_blob,
+      original_file_name: remote.original_file_name ?? localArchive.original_file_name,
+      mime_type: remote.mime_type ?? localArchive.mime_type,
+      file_size: remote.file_size ?? localArchive.file_size,
+      storage_path: remote.storage_path ?? localArchive.storage_path
+    } : {};
     await table.put({
       ...remote,
       ...localOnly,
@@ -209,7 +215,6 @@ async function pullEntity(companyId: string, entity: SyncEntity, watermark: stri
       const result = await applyRemoteRecord(companyId, entity, row);
       if (result === "applied" || result === "unchanged") pulled += 1;
     }
-    pulled += 0;
     pageCount = rows.length;
     if (pageCount < PAGE_SIZE) break;
     offset += PAGE_SIZE;
@@ -243,6 +248,12 @@ export async function runCompanySync(companyId: string, role: string): Promise<S
   for (const entity of allowedPullEntities(role)) {
     pulled += await pullEntity(companyId, entity, watermark);
   }
+
+  // Binary attachments stay in IndexedDB until the private Storage upload succeeds.
+  // Their metadata/path then returns through the ordinary idempotent sync queue.
+  await syncPendingArchiveFiles(companyId);
+  const fileMetadataPush = await pushPending(companyId);
+
   const pending = await localDb.syncQueue
     .where("company_id").equals(companyId)
     .count();
@@ -252,11 +263,11 @@ export async function runCompanySync(companyId: string, role: string): Promise<S
     .count();
 
   return {
-    pushed: pushed.pushed,
+    pushed: pushed.pushed + fileMetadataPush.pushed,
     pulled,
-    conflicts: pushed.conflicts,
+    conflicts: pushed.conflicts + fileMetadataPush.conflicts,
     pending,
-    failed: Math.max(failed, pushed.failed),
+    failed: Math.max(failed, pushed.failed + fileMetadataPush.failed),
     completedAt: new Date().toISOString()
   };
 }
