@@ -19,7 +19,6 @@ async function bootstrap(): Promise<void> {
   const pinia = createPinia();
 
   app.use(pinia);
-  app.use(router);
 
   const authStore = useAuthStore(pinia);
   try {
@@ -29,6 +28,7 @@ async function bootstrap(): Promise<void> {
       error instanceof Error ? error.message : "تعذر تهيئة جلسة المستخدم.";
   }
 
+  app.use(router);
   await router.isReady();
   app.mount("#app");
 }

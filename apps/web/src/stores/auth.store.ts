@@ -149,22 +149,27 @@ export const useAuthStore = defineStore("auth", () => {
           _deleted: company.deleted_at
         }));
 
-      await localDb.transaction(
-        "rw",
-        [localDb.profiles, localDb.memberships, localDb.companies],
-        async () => {
-          await localDb.profiles.put(cachedProfile);
-          if (cachedMemberships.length > 0) {
-            await localDb.memberships.bulkPut(cachedMemberships);
-          }
-          if (cachedCompanies.length > 0) {
-            await localDb.companies.bulkPut(cachedCompanies);
-          }
-        }
-      );
-
       profile.value = nextProfile;
       memberships.value = nextMemberships;
+
+      try {
+        await localDb.transaction(
+          "rw",
+          [localDb.profiles, localDb.memberships, localDb.companies],
+          async () => {
+            await localDb.profiles.put(cachedProfile);
+            if (cachedMemberships.length > 0) {
+              await localDb.memberships.bulkPut(cachedMemberships);
+            }
+            if (cachedCompanies.length > 0) {
+              await localDb.companies.bulkPut(cachedCompanies);
+            }
+          }
+        );
+      } catch {
+        // Keep the authenticated cloud session usable if local caching is unavailable.
+      }
+
       return;
     } catch (error: unknown) {
       remoteFailure =
