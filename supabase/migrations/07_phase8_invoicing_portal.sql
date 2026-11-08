@@ -150,13 +150,36 @@ begin
  perform public.recalculate_invoice(p_company_id,v_id); return v_id;
 end $$;
 
+create or replace function public.guard_invoice_payment()
+returns trigger language plpgsql security definer set search_path=public,auth,pg_temp as $
+declare v_total numeric(14,2); v_paid numeric(14,2);
+begin
+ select total into v_total from public.invoices where id=new.invoice_id and company_id=new.company_id and deleted_at is null for update;
+ if not found then raise exception 'Invoice not found.' using errcode='23503'; end if;
+ select coalesce(sum(amount),0) into v_paid from public.invoice_payments where invoice_id=new.invoice_id and company_id=new.company_id;
+ if v_paid+new.amount>v_total then raise exception 'Payment exceeds invoice balance.' using errcode='23514'; end if;
+ return new;
+end $;
+create or replace function public.refresh_invoice_after_payment()
+returns trigger language plpgsql security definer set search_path=public,auth,pg_temp as $
+begin
+ perform public.recalculate_invoice(new.company_id,new.invoice_id);
+ return new;
+end $;
+drop trigger if exists guard_invoice_payment_before_insert on public.invoice_payments;
+create trigger guard_invoice_payment_before_insert before insert on public.invoice_payments
+for each row execute function public.guard_invoice_payment();
+drop trigger if exists refresh_invoice_after_payment_insert on public.invoice_payments;
+create trigger refresh_invoice_after_payment_insert after insert on public.invoice_payments
+for each row execute function public.refresh_invoice_after_payment();
+
 create or replace function public.issue_client_portal_token(p_company_id uuid,p_client_id uuid,p_expires_at timestamptz default null)
 returns text language plpgsql security definer set search_path=public,auth,pg_temp as $$
 declare v_token text:=encode(gen_random_bytes(32),'hex');
 begin
  if not public.has_company_role(p_company_id,array['company_admin','manager']::public.app_role[]) then raise exception 'Insufficient portal permissions.' using errcode='42501'; end if;
  if not exists(select 1 from public.clients where id=p_client_id and company_id=p_company_id and deleted_at is null) then raise exception 'Client not found.' using errcode='23503'; end if;
- insert into public.client_access_tokens(company_id,client_id,token_hash,expires_at) values(p_company_id,p_client_id,encode(digest(v_token,'sha256'),'hex'),p_expires_at);
+ insert into public.client_access_tokens(company_id,client_id,token_hash,expires_at) values(p_company_id,p_client_id,encode(digest(v_token,'sha256'),'hex'),coalesce(p_expires_at,now()+interval '30 days'));
  return v_token;
 end $$;
 
@@ -185,7 +208,7 @@ begin
  select client_id,company_id into v_client,v_company from public.client_access_tokens where token_hash=encode(digest(coalesce(p_token,''),'sha256'),'hex') and revoked_at is null and deleted_at is null and (expires_at is null or expires_at>now());
  if v_client is null then raise exception 'Invalid or expired portal link.' using errcode='28000'; end if;
  if length(trim(coalesce(p_signer_name,'')))<2 or length(coalesce(p_signature_data_url,''))>2000000 or p_signature_data_url !~ '^data:image/png;base64,' then raise exception 'Invalid signature.' using errcode='22023'; end if;
- if not exists(select 1 from public.invoices where id=p_invoice_id and company_id=v_company and client_id=v_client and status not in ('draft','cancelled')) then raise exception 'Invoice not available for signing.' using errcode='42501'; end if;
+ if not exists(select 1 from public.invoices where id=p_invoice_id and company_id=v_company and client_id=v_client and status not in ('draft','cancelled')) then raise exception 'Invoice not available for signing.' using errcode='42501'; end if;\n if exists(select 1 from public.client_signatures where company_id=v_company and client_id=v_client and invoice_id=p_invoice_id and deleted_at is null) then raise exception 'Invoice has already been signed.' using errcode='23505'; end if;
  insert into public.client_signatures(company_id,client_id,invoice_id,signer_name,signature_data_url) values(v_company,v_client,p_invoice_id,trim(p_signer_name),p_signature_data_url) returning id into v_id;
  return v_id;
 end $$;
