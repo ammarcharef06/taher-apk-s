@@ -125,7 +125,7 @@ export async function deleteWorker(companyId: string, workerId: string): Promise
   try {
     await localDb.transaction(
       "rw",
-      [localDb.workers, localDb.wages, localDb.advances, localDb.syncQueue],
+      [localDb.workers, localDb.wages, localDb.advances, localDb.archives, localDb.syncQueue],
       async () => {
         const worker = await localDb.workers.get(workerId);
         if (!worker || worker.company_id !== companyId || worker.deleted_at !== null) {
@@ -151,6 +151,21 @@ export async function deleteWorker(companyId: string, workerId: string): Promise
           .where("worker_id")
           .equals(workerId)
           .and((advance) => advance.company_id === companyId && advance.deleted_at === null)
+          .toArray();
+
+        const relatedRecordIds = new Set([
+          ...wages.map((wage) => wage.id),
+          ...advances.map((advance) => advance.id)
+        ]);
+        const relatedArchives = await localDb.archives
+          .where("company_id")
+          .equals(companyId)
+          .and((archive) =>
+            archive.deleted_at === null &&
+            (archive.source_table === "wages" || archive.source_table === "advances") &&
+            archive.source_id !== null &&
+            relatedRecordIds.has(archive.source_id)
+          )
           .toArray();
 
         await localDb.workers.put(deletedWorker);
@@ -187,6 +202,22 @@ export async function deleteWorker(companyId: string, workerId: string): Promise
           await localDb.syncQueue.add({
             ...createQueueItem(companyId, advance.id, "update", deletedAdvance, timestamp),
             entity: "advances"
+          });
+        }
+
+        for (const archive of relatedArchives) {
+          const deletedArchive = {
+            ...archive,
+            deleted_at: timestamp,
+            updated_at: timestamp,
+            _updated_at: timestamp,
+            _deleted: timestamp,
+            _synced: 0 as const
+          };
+          await localDb.archives.put(deletedArchive);
+          await localDb.syncQueue.add({
+            ...createQueueItem(companyId, archive.id, "update", deletedArchive, timestamp),
+            entity: "archives"
           });
         }
       }
