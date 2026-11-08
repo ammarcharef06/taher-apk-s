@@ -1,9 +1,12 @@
 <script setup lang="ts">
+import { computed } from "vue";
 import { useRoute } from "vue-router";
+import { useAuthStore } from "../../stores/auth.store";
 
 const route = useRoute();
+const auth = useAuthStore();
 
-const navigation = [
+const allNavigation = [
   { name: "dashboard", label: "لوحة التحكم", icon: "◫" },
   { name: "workers", label: "العمال", icon: "♙" },
   { name: "cash", label: "الصندوق", icon: "▣" },
@@ -14,6 +17,22 @@ const navigation = [
   { name: "reports", label: "التقارير", icon: "▥" },
   { name: "settings", label: "الإعدادات", icon: "⚙" }
 ] as const;
+
+const navigation = computed(() =>
+  allNavigation.filter((item) => {
+    if (item.name === "workers") {
+      return auth.activeRole === "company_admin" || auth.activeRole === "manager";
+    }
+    if (item.name === "cash") {
+      return (
+        auth.activeRole === "company_admin" ||
+        auth.activeRole === "manager" ||
+        auth.activeRole === "data_entry"
+      );
+    }
+    return true;
+  })
+);
 </script>
 
 <template>

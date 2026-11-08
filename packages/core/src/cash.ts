@@ -56,8 +56,9 @@ export function validateCashTransactionInput(input: CashTransactionInput): CashT
   if (description.length < 2 || description.length > 500) {
     throw new Error("بيان الحركة يجب أن يتراوح بين حرفين و500 حرف.");
   }
-  if (!Number.isFinite(input.amount) || input.amount <= 0) {
-    throw new Error("يجب أن يكون مبلغ الحركة أكبر من صفر.");
+  const roundedAmount = roundMoney(input.amount);
+  if (!Number.isFinite(input.amount) || roundedAmount <= 0) {
+    throw new Error("يجب أن يكون مبلغ الحركة أكبر من صفر بعد التقريب إلى سنتيمين.");
   }
 
   return {
@@ -65,7 +66,7 @@ export function validateCashTransactionInput(input: CashTransactionInput): CashT
     transaction_type: input.transaction_type,
     description,
     beneficiary: normalizeText(input.beneficiary),
-    amount: roundMoney(input.amount),
+    amount: roundedAmount,
     document_number: normalizeText(input.document_number),
     notes: normalizeText(input.notes)
   };

@@ -71,6 +71,20 @@ describe("cash business logic", () => {
     });
   });
 
+  it("rejects a positive amount that rounds to zero", () => {
+    expect(() =>
+      validateCashTransactionInput({
+        transaction_date: "2025-02-01",
+        transaction_type: "expense",
+        description: "مبلغ صغير",
+        beneficiary: null,
+        amount: 0.001,
+        document_number: null,
+        notes: null
+      })
+    ).toThrow("بعد التقريب");
+  });
+
   it("calculates the balance after income and expenses", () => {
     const rows = [
       transaction("1", "2025-01-02", "income", 1000, "دفعة"),
