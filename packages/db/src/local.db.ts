@@ -169,6 +169,7 @@ export interface LocalExpense extends SyncMetadata {
   amount_ht: number;
   tax_amount: number;
   amount_ttc: number;
+  cash_transaction_id: string | null;
   payment_method: "cash" | "bank" | "credit";
   notes: string | null;
   created_by: string | null;
@@ -194,6 +195,9 @@ export interface LocalArchive extends SyncMetadata {
   delivered_at: string | null;
   notes: string | null;
   file_blob: Blob | null;
+  original_file_name: string | null;
+  mime_type: string | null;
+  file_size: number | null;
   created_at: string;
   updated_at: string;
   deleted_at: string | null;
@@ -320,6 +324,10 @@ class TaherLocalDatabase extends Dexie {
 
     this.version(2).stores({
       wagePayments: "&id, company_id, wage_id, worker_id, payment_date, receipt_number, [company_id+wage_id], [worker_id+payment_date]"
+    });
+
+    this.version(3).stores({
+      archives: "&id, company_id, document_date, document_type, [company_id+document_date], [company_id+source_id], source_id, updated_at, _synced, _deleted"
     });
   }
 }
