@@ -5,3 +5,5 @@ export * from "./advances";
 export * from "./social-security";
 export * from "./expenses";
 export * from "./archives";
+
+export * from "./sync";
