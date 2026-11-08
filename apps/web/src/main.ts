@@ -5,6 +5,7 @@ import router from "./router";
 import { useAuthStore } from "./stores/auth.store";
 import { openLocalDatabase } from "@taher/db";
 import { logger } from "./utils/logger";
+import { i18n } from "./i18n";
 import "./assets/main.css";
 
 async function bootstrap(): Promise<void> {
@@ -19,13 +20,13 @@ async function bootstrap(): Promise<void> {
   const pinia = createPinia();
 
   app.use(pinia);
+  app.use(i18n);
 
   const authStore = useAuthStore(pinia);
   try {
     await authStore.initialize();
   } catch (error: unknown) {
-    authStore.errorMessage =
-      error instanceof Error ? error.message : "تعذر تهيئة جلسة المستخدم.";
+    authStore.errorMessage = error instanceof Error ? error.message : "تعذر تهيئة جلسة المستخدم.";
   }
 
   app.use(router);
