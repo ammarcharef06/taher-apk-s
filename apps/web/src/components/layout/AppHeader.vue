@@ -48,7 +48,7 @@ async function logout(): Promise<void> {
         <button
           v-if="auth.activeCompany"
           type="button"
-          class="hidden items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-wait disabled:opacity-60 sm:flex"
+          class="flex items-center gap-2 rounded-lg border border-slate-200 px-2 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-wait disabled:opacity-60 sm:px-3"
           :disabled="sync.isBusy || sync.status === 'offline'"
           :title="sync.errorMessage || 'مزامنة البيانات المحلية مع السحابة'"
           @click="sync.syncNow"
@@ -62,7 +62,7 @@ async function logout(): Promise<void> {
               'bg-red-500': sync.status === 'error'
             }"
           />
-          <span>{{ syncLabel }}</span>
+          <span class="hidden sm:inline">{{ syncLabel }}</span>
           <span v-if="sync.pending > 0" class="rounded-full bg-amber-100 px-1.5 py-0.5 text-amber-800">{{ sync.pending }}</span>
         </button>
         <div class="hidden text-left sm:block">
