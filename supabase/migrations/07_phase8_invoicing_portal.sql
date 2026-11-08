@@ -115,6 +115,13 @@ create policy company_archives_read on storage.objects for select to authenticat
  )
 );
 
+drop policy if exists client_signatures_insert_client_or_admin on public.client_signatures;
+create policy client_signatures_insert_client_or_admin on public.client_signatures for insert to authenticated with check (
+ public.has_company_role(company_id,array['company_admin','manager']::public.app_role[])
+ or exists(select 1 from public.clients c where c.id=client_id and c.company_id=client_signatures.company_id and c.user_id=auth.uid()
+   and (invoice_id is null or exists(select 1 from public.invoices i where i.id=invoice_id and i.company_id=client_signatures.company_id and i.client_id=client_signatures.client_id)))
+);
+
 create or replace function public.recalculate_invoice(p_company_id uuid,p_invoice_id uuid)
 returns void language plpgsql security definer set search_path=public,auth,pg_temp as $$
 declare v_sub numeric(14,2); v_tax numeric(14,2); v_paid numeric(14,2);
