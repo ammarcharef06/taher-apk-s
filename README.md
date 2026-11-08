@@ -112,3 +112,8 @@ taher-accounting-ng/
 The two-way synchronization implementation, conflict policy, supported entities, and validation procedure are documented in [docs/SYNC-ENGINE.md](docs/SYNC-ENGINE.md).
 
 Apply database migrations in numeric order. Phase 5 adds `supabase/migrations/06_phase5_sync_engine.sql`; it uses the authenticated Supabase session and the existing private `company-archives` Storage bucket.
+
+
+## Phase 6 — Reports, charts, PDF, and languages
+
+Phase 6 adds offline-first financial reports, dashboard charts, browser-native PDF printing, and the Arabic/French/English locale foundation. See [docs/PHASE-6-REPORTS-I18N.md](docs/PHASE-6-REPORTS-I18N.md) for reporting definitions, installation, and acceptance checks.
