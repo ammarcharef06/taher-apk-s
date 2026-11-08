@@ -1,63 +1,40 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { useRoute } from "vue-router";
+import { useI18n } from "vue-i18n";
 import { useAuthStore } from "../../stores/auth.store";
 
 const route = useRoute();
 const auth = useAuthStore();
+const { t } = useI18n({ useScope: "global" });
 
 const allNavigation = [
-  { name: "dashboard", label: "لوحة التحكم", icon: "◫" },
-  { name: "workers", label: "العمال", icon: "♙" },
-  { name: "cash", label: "الصندوق", icon: "▣" },
-  { name: "wages", label: "الأجور", icon: "د" },
-  { name: "advances", label: "التسبيقات", icon: "↗" },
-  { name: "socialSecurity", label: "CNAS / CASNOS", icon: "▤" },
-  { name: "expenses", label: "المصاريف والمشتريات", icon: "▤" },
-  { name: "archives", label: "الأرشيف", icon: "▧" },
-  { name: "reports", label: "التقارير", icon: "▥" },
-  { name: "settings", label: "الإعدادات", icon: "⚙" }
+  { name: "dashboard", key: "dashboard", icon: "◫" },
+  { name: "workers", key: "workers", icon: "♙" },
+  { name: "cash", key: "cash", icon: "▣" },
+  { name: "wages", key: "wages", icon: "د" },
+  { name: "advances", key: "advances", icon: "↗" },
+  { name: "socialSecurity", key: "socialSecurity", icon: "▤" },
+  { name: "expenses", key: "expenses", icon: "▤" },
+  { name: "archives", key: "archives", icon: "▧" },
+  { name: "reports", key: "reports", icon: "▥" },
+  { name: "settings", key: "settings", icon: "⚙" }
 ] as const;
 
-const navigation = computed(() =>
-  allNavigation.filter((item) => {
-    if (item.name === "workers") {
-      return auth.activeRole === "company_admin" || auth.activeRole === "manager";
-    }
-    if (item.name === "cash") {
-      return (
-        auth.activeRole === "company_admin" ||
-        auth.activeRole === "manager" ||
-        auth.activeRole === "data_entry"
-      );
-    }
-    if (item.name === "wages" || item.name === "socialSecurity") {
-      return (
-        auth.activeRole === "company_admin" ||
-        auth.activeRole === "manager" ||
-        auth.activeRole === "accountant"
-      );
-    }
-    if (item.name === "expenses" || item.name === "archives") {
-      return ["company_admin", "manager", "accountant", "data_entry"].includes(auth.activeRole ?? "");
-    }
-    if (item.name === "advances") {
-      return (
-        auth.activeRole === "company_admin" ||
-        auth.activeRole === "manager" ||
-        auth.activeRole === "accountant" ||
-        auth.activeRole === "data_entry"
-      );
-    }
-    return true;
-  })
-);
+const navigation = computed(() => allNavigation.filter(item => {
+  if (item.name === "workers") return auth.activeRole === "company_admin" || auth.activeRole === "manager";
+  if (item.name === "cash") return ["company_admin", "manager", "data_entry"].includes(auth.activeRole ?? "");
+  if (item.name === "wages" || item.name === "socialSecurity") return ["company_admin", "manager", "accountant"].includes(auth.activeRole ?? "");
+  if (item.name === "expenses" || item.name === "archives") return ["company_admin", "manager", "accountant", "data_entry"].includes(auth.activeRole ?? "");
+  if (item.name === "advances") return ["company_admin", "manager", "accountant", "data_entry"].includes(auth.activeRole ?? "");
+  return true;
+}));
 </script>
 
 <template>
   <aside class="w-full shrink-0 lg:w-64">
-    <nav class="panel flex gap-1 overflow-x-auto p-2 lg:sticky lg:top-24 lg:flex-col lg:space-y-1 lg:p-3" aria-label="القائمة الرئيسية">
-      <p class="hidden px-3 pb-3 pt-2 text-xs font-bold text-slate-400 lg:block">القائمة الرئيسية</p>
+    <nav class="panel flex gap-1 overflow-x-auto p-2 lg:sticky lg:top-24 lg:flex-col lg:space-y-1 lg:p-3" :aria-label="t('app.mainMenu')">
+      <p class="hidden px-3 pb-3 pt-2 text-xs font-bold text-slate-400 lg:block">{{ t("app.mainMenu") }}</p>
       <RouterLink
         v-for="item in navigation"
         :key="item.name"
@@ -66,7 +43,7 @@ const navigation = computed(() =>
         :class="route.name === item.name ? 'bg-brand-50 text-brand-700' : 'text-slate-600 hover:bg-slate-50'"
       >
         <span class="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-100 text-base">{{ item.icon }}</span>
-        {{ item.label }}
+        {{ t("app." + item.key) }}
       </RouterLink>
     </nav>
   </aside>
