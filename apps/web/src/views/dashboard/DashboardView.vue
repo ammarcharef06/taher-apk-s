@@ -2,10 +2,12 @@
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useAuthStore } from "../../stores/auth.store";
+import { useSyncStore, type SyncStatus } from "../../stores/sync.store";
 import FinanceChart from "../../components/charts/FinanceChart.vue";
 import { buildCompanyReport, type CompanyReport } from "../../services/reporting.service";
 
 const auth = useAuthStore();
+const sync = useSyncStore();
 const { t, locale } = useI18n({ useScope: "global" });
 const companyId = computed(() => auth.activeCompany?.id ?? "");
 const currency = computed(() => auth.activeCompany?.currency_code ?? "DZD");
@@ -14,11 +16,14 @@ const trendReport = ref<CompanyReport | null>(null);
 const loading = ref(false);
 const isRtl = computed(() => locale.value === "ar");
 const localeCode = computed(() => locale.value === "ar" ? "ar-DZ" : locale.value === "fr" ? "fr-FR" : "en-US");
+const syncKeys: Record<SyncStatus, "app.idle" | "app.syncing" | "app.synced" | "app.offline" | "app.syncError"> = {
+  idle: "app.idle", syncing: "app.syncing", online: "app.synced", offline: "app.offline", error: "app.syncError"
+};
+const syncLabel = computed(() => t(syncKeys[sync.status]));
 
 function localDate(date: Date): string {
   return [date.getFullYear(), String(date.getMonth() + 1).padStart(2, "0"), String(date.getDate()).padStart(2, "0")].join("-");
 }
-
 const today = computed(() => new Intl.DateTimeFormat(localeCode.value, { dateStyle: "full" }).format(new Date()));
 function money(value: number): string {
   return new Intl.NumberFormat(localeCode.value, { style: "currency", currency: currency.value, maximumFractionDigits: 2 }).format(value);
@@ -51,8 +56,7 @@ async function loadDashboard(): Promise<void> {
   const now = new Date();
   const todayValue = localDate(now);
   const monthStart = todayValue.slice(0, 8) + "01";
-  const trendStartDate = new Date(now.getFullYear(), now.getMonth() - 5, 1);
-  const trendStart = localDate(trendStartDate);
+  const trendStart = localDate(new Date(now.getFullYear(), now.getMonth() - 5, 1));
   try {
     const [current, trend] = await Promise.all([
       buildCompanyReport(companyId.value, currency.value, monthStart, todayValue),
@@ -60,6 +64,9 @@ async function loadDashboard(): Promise<void> {
     ]);
     currentMonthReport.value = current;
     trendReport.value = trend;
+  } catch {
+    currentMonthReport.value = null;
+    trendReport.value = null;
   } finally {
     loading.value = false;
   }
@@ -74,13 +81,11 @@ watch(companyId, () => void loadDashboard(), { immediate: true });
       <div>
         <p class="text-sm text-slate-500">{{ today }}</p>
         <h1 class="mt-2 text-2xl font-bold text-slate-900">{{ t("dashboard.title") }}</h1>
-        <p class="mt-1 text-sm text-slate-500">
-          {{ t("dashboard.welcome", { name: auth.profile?.display_name || t("common.unknown") }) }}
-        </p>
+        <p class="mt-1 text-sm text-slate-500">{{ t("dashboard.welcome", { name: auth.profile?.display_name || t("common.unknown") }) }}</p>
       </div>
-      <span class="inline-flex w-fit items-center gap-2 rounded-full bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700">
-        <span class="h-2 w-2 rounded-full bg-emerald-500"></span>
-        {{ t("app.synced") }}
+      <span class="inline-flex w-fit items-center gap-2 rounded-full px-3 py-2 text-xs font-semibold" :class="sync.status === 'online' ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600'">
+        <span class="h-2 w-2 rounded-full" :class="sync.status === 'online' ? 'bg-emerald-500' : sync.status === 'error' ? 'bg-red-500' : 'bg-slate-400'"></span>
+        {{ syncLabel }}
       </span>
     </div>
 
@@ -92,9 +97,7 @@ watch(companyId, () => void loadDashboard(), { immediate: true });
         </div>
         <p class="mt-5 break-words text-2xl font-bold text-slate-900">{{ loading ? "…" : item.value }}</p>
       </article>
-      <article v-if="!indicators.length" class="panel p-5 text-sm text-slate-500 sm:col-span-2 xl:col-span-4">
-        {{ loading ? t("common.loading") : t("dashboard.noData") }}
-      </article>
+      <article v-if="!indicators.length" class="panel p-5 text-sm text-slate-500 sm:col-span-2 xl:col-span-4">{{ loading ? t("common.loading") : t("dashboard.noData") }}</article>
     </div>
 
     <div class="grid gap-5 xl:grid-cols-3">
@@ -105,7 +108,6 @@ watch(companyId, () => void loadDashboard(), { immediate: true });
         </div>
         <p v-else class="py-16 text-center text-sm text-slate-400">{{ t("dashboard.noData") }}</p>
       </section>
-
       <section class="panel p-6">
         <h2 class="font-bold text-slate-900">{{ t("dashboard.company") }}</h2>
         <dl class="mt-5 space-y-4 text-sm">
