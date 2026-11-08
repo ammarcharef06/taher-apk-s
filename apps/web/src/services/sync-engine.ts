@@ -61,8 +61,8 @@ function allowedPullEntities(role: string): SyncEntity[] {
   }
   if (role === "accountant") {
     return [
-      "workers", "cash_transactions", "cash_opening_balances", "wages",
-      "wage_payments", "advances", "social_security_declarations", "expenses", "archives"
+      "workers", "wages", "wage_payments", "advances",
+      "social_security_declarations", "expenses", "archives"
     ];
   }
   if (role === "data_entry") {
