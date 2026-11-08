@@ -99,7 +99,8 @@ async function applyRemoteRecord(
   companyId: string,
   entity: SyncEntity,
   remoteInput: Record<string, unknown>,
-  forceServer: boolean = false
+  forceServer: boolean = false,
+  acceptedClientUpdatedAt?: string
 ): Promise<"applied" | "local_wins" | "unchanged"> {
   const remote = { ...remoteInput };
   const recordId = String(remote.id ?? "");
@@ -122,6 +123,14 @@ async function applyRemoteRecord(
       .where("company_id").equals(companyId)
       .and((item) => item.entity === entity && item.record_id === localRecordId)
       .toArray();
+
+    if (local && queued.length > 0 && forceServer && acceptedClientUpdatedAt) {
+      const localTime = Date.parse(String(local.updated_at ?? local._updated_at ?? local.created_at ?? ""));
+      const acceptedTime = Date.parse(acceptedClientUpdatedAt);
+      if (Number.isFinite(localTime) && Number.isFinite(acceptedTime) && localTime > acceptedTime) {
+        return "local_wins";
+      }
+    }
 
     if (local && queued.length > 0 && !forceServer) {
       const winner = chooseSyncWinner(
@@ -201,7 +210,13 @@ async function pushPending(companyId: string): Promise<{ pushed: number; conflic
         conflicts += 1;
         await applyRemoteRecord(companyId, item.entity as SyncEntity, remote);
       } else {
-        await applyRemoteRecord(companyId, item.entity as SyncEntity, remote, true);
+        await applyRemoteRecord(
+          companyId,
+          item.entity as SyncEntity,
+          remote,
+          true,
+          String(payload.updated_at ?? payload.created_at ?? "")
+        );
       }
       await localDb.syncQueue.bulkDelete(ids);
       pushed += 1;
