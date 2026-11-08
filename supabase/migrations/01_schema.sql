@@ -93,7 +93,8 @@ create table if not exists public.clients (
   notes text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  deleted_at timestamptz
+  deleted_at timestamptz,
+  constraint clients_company_id_id_unique unique (company_id, id)
 );
 
 create table if not exists public.workers (
@@ -108,7 +109,8 @@ create table if not exists public.workers (
   notes text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  deleted_at timestamptz
+  deleted_at timestamptz,
+  constraint workers_company_id_id_unique unique (company_id, id)
 );
 
 create table if not exists public.cash_transactions (
@@ -144,7 +146,7 @@ create table if not exists public.cash_opening_balances (
 create table if not exists public.wages (
   id uuid primary key default gen_random_uuid(),
   company_id uuid not null references public.companies(id) on delete cascade,
-  worker_id uuid not null references public.workers(id) on delete restrict,
+  worker_id uuid not null,
   wage_month date not null,
   work_days numeric(7, 2) not null default 0 check (work_days >= 0),
   daily_rate numeric(14, 2) not null default 0 check (daily_rate >= 0),
@@ -163,6 +165,9 @@ create table if not exists public.wages (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   deleted_at timestamptz,
+  constraint wages_worker_company_fk
+    foreign key (company_id, worker_id)
+    references public.workers(company_id, id) on delete restrict,
   constraint wages_month_start check (extract(day from wage_month) = 1),
   constraint wages_paid_not_over_due check (paid_amount <= greatest(net_due, 0)),
   constraint wages_worker_month_unique unique (worker_id, wage_month)
@@ -180,7 +185,10 @@ create table if not exists public.advances (
   created_by uuid references public.profiles(id) on delete set null,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  deleted_at timestamptz
+  deleted_at timestamptz,
+  constraint advances_worker_company_fk
+    foreign key (company_id, worker_id)
+    references public.workers(company_id, id) on delete restrict
 );
 
 create table if not exists public.social_security_declarations (
@@ -240,7 +248,8 @@ create table if not exists public.archives (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   deleted_at timestamptz,
-  constraint archives_source_unique unique (company_id, source_table, source_id)
+  constraint archives_source_unique unique (company_id, source_table, source_id),
+  constraint archives_company_id_id_unique unique (company_id, id)
 );
 
 create table if not exists public.audit_logs (
@@ -270,26 +279,35 @@ create table if not exists public.correction_logs (
 create table if not exists public.client_access_tokens (
   id uuid primary key default gen_random_uuid(),
   company_id uuid not null references public.companies(id) on delete cascade,
-  client_id uuid not null references public.clients(id) on delete cascade,
+  client_id uuid not null,
   token_hash text not null unique,
   expires_at timestamptz,
   revoked_at timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  deleted_at timestamptz
+  deleted_at timestamptz,
+  constraint client_tokens_company_client_fk
+    foreign key (company_id, client_id)
+    references public.clients(company_id, id) on delete cascade
 );
 
 create table if not exists public.client_signatures (
   id uuid primary key default gen_random_uuid(),
   company_id uuid not null references public.companies(id) on delete cascade,
   client_id uuid not null references public.clients(id) on delete cascade,
-  archive_id uuid references public.archives(id) on delete set null,
+  archive_id uuid,
   signer_name text not null,
   signature_storage_path text,
   signed_at timestamptz not null default now(),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  deleted_at timestamptz
+  deleted_at timestamptz,
+  constraint client_signatures_company_client_fk
+    foreign key (company_id, client_id)
+    references public.clients(company_id, id) on delete cascade,
+  constraint client_signatures_company_archive_fk
+    foreign key (company_id, archive_id)
+    references public.archives(company_id, id) on delete restrict
 );
 
 create index if not exists company_memberships_user_active_idx

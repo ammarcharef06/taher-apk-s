@@ -91,15 +91,17 @@ async function submitSetup(): Promise<void> {
             <input v-model.trim="companyName" class="form-input" required minlength="2" placeholder="اسم الشركة" />
           </label>
 
-          <label class="form-field">
-            البريد الإلكتروني
-            <input v-model.trim="email" class="form-input" type="email" autocomplete="email" required placeholder="name@example.com" />
-          </label>
+          <template v-if="!auth.isAuthenticated">
+            <label class="form-field">
+              البريد الإلكتروني
+              <input v-model.trim="email" class="form-input" type="email" autocomplete="email" required placeholder="name@example.com" />
+            </label>
 
-          <label class="form-field">
-            كلمة المرور
-            <input v-model="password" class="form-input" type="password" autocomplete="new-password" required minlength="8" placeholder="8 أحرف على الأقل" />
-          </label>
+            <label class="form-field">
+              كلمة المرور
+              <input v-model="password" class="form-input" type="password" autocomplete="new-password" required minlength="8" placeholder="8 أحرف على الأقل" />
+            </label>
+          </template>
 
           <label class="form-field">
             العملة

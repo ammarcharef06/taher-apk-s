@@ -23,7 +23,7 @@ export interface LocalCompany {
   _deleted: string | null;
 }
 
-export interface LocalProfile {
+export interface LocalProfile extends SyncMetadata {
   id: string;
   display_name: string;
   phone: string | null;
@@ -184,7 +184,7 @@ export interface LocalArchive extends SyncMetadata {
   deleted_at: string | null;
 }
 
-export interface LocalAuditLog {
+export interface LocalAuditLog extends SyncMetadata {
   id: string;
   company_id: string;
   actor_user_id: string | null;
@@ -196,7 +196,7 @@ export interface LocalAuditLog {
   created_at: string;
 }
 
-export interface LocalCorrectionLog {
+export interface LocalCorrectionLog extends SyncMetadata {
   id: string;
   company_id: string;
   actor_user_id: string | null;
@@ -216,6 +216,31 @@ export interface LocalClient extends SyncMetadata {
   phone: string | null;
   email: string | null;
   notes: string | null;
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
+}
+
+export interface LocalClientAccessToken extends SyncMetadata {
+  id: string;
+  company_id: string;
+  client_id: string;
+  token_hash: string;
+  expires_at: string | null;
+  revoked_at: string | null;
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
+}
+
+export interface LocalClientSignature extends SyncMetadata {
+  id: string;
+  company_id: string;
+  client_id: string;
+  archive_id: string | null;
+  signer_name: string;
+  signature_storage_path: string | null;
+  signed_at: string;
   created_at: string;
   updated_at: string;
   deleted_at: string | null;
@@ -250,6 +275,8 @@ class TaherLocalDatabase extends Dexie {
   archives!: Table<LocalArchive, string>;
   auditLogs!: Table<LocalAuditLog, string>;
   correctionLogs!: Table<LocalCorrectionLog, string>;
+  clientAccessTokens!: Table<LocalClientAccessToken, string>;
+  clientSignatures!: Table<LocalClientSignature, string>;
   syncQueue!: Table<SyncQueueItem, number>;
 
   constructor() {
@@ -270,6 +297,8 @@ class TaherLocalDatabase extends Dexie {
       archives: "&id, company_id, document_date, document_type, [company_id+document_date], source_id, updated_at, _synced, _deleted",
       auditLogs: "&id, company_id, created_at, table_name, record_id",
       correctionLogs: "&id, company_id, created_at, table_name, record_id",
+      clientAccessTokens: "&id, company_id, client_id, token_hash, expires_at, revoked_at, _synced, _deleted",
+      clientSignatures: "&id, company_id, client_id, archive_id, signed_at, _synced, _deleted",
       syncQueue: "++id, company_id, entity, record_id, operation, status, created_at"
     });
   }
@@ -306,6 +335,8 @@ export async function clearLocalCompanyData(companyId: string): Promise<void> {
       localDb.archives,
       localDb.auditLogs,
       localDb.correctionLogs,
+      localDb.clientAccessTokens,
+      localDb.clientSignatures,
       localDb.syncQueue
     ],
     async () => {
@@ -322,6 +353,8 @@ export async function clearLocalCompanyData(companyId: string): Promise<void> {
         localDb.archives.where("company_id").equals(companyId).delete(),
         localDb.auditLogs.where("company_id").equals(companyId).delete(),
         localDb.correctionLogs.where("company_id").equals(companyId).delete(),
+        localDb.clientAccessTokens.where("company_id").equals(companyId).delete(),
+        localDb.clientSignatures.where("company_id").equals(companyId).delete(),
         localDb.syncQueue.where("company_id").equals(companyId).delete()
       ]);
     }

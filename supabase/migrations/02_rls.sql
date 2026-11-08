@@ -116,7 +116,8 @@ with check (id = auth.uid());
 create policy memberships_read_self_or_company_admin
 on public.company_memberships for select to authenticated
 using (
-  user_id = auth.uid()
+  public.is_super_admin()
+  or user_id = auth.uid()
   or public.has_company_role(company_id, array['company_admin']::public.app_role[])
 );
 
@@ -124,20 +125,32 @@ create policy memberships_insert_company_admin
 on public.company_memberships for insert to authenticated
 with check (
   role <> 'super_admin'
-  and public.has_company_role(company_id, array['company_admin']::public.app_role[])
+  and (
+    public.is_super_admin()
+    or public.has_company_role(company_id, array['company_admin']::public.app_role[])
+  )
 );
 
 create policy memberships_update_company_admin
 on public.company_memberships for update to authenticated
-using (public.has_company_role(company_id, array['company_admin']::public.app_role[]))
+using (
+  public.is_super_admin()
+  or public.has_company_role(company_id, array['company_admin']::public.app_role[])
+)
 with check (
   role <> 'super_admin'
-  and public.has_company_role(company_id, array['company_admin']::public.app_role[])
+  and (
+    public.is_super_admin()
+    or public.has_company_role(company_id, array['company_admin']::public.app_role[])
+  )
 );
 
 create policy memberships_delete_company_admin
 on public.company_memberships for delete to authenticated
-using (public.has_company_role(company_id, array['company_admin']::public.app_role[]));
+using (
+  public.is_super_admin()
+  or public.has_company_role(company_id, array['company_admin']::public.app_role[])
+);
 
 create policy clients_read_company_or_self
 on public.clients for select to authenticated
