@@ -3,13 +3,20 @@ import { computed, watch } from "vue";
 import { useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
 import { useAuthStore } from "../../stores/auth.store";
-import { useSyncStore } from "../../stores/sync.store";
+import { useSyncStore, type SyncStatus } from "../../stores/sync.store";
 
 const router = useRouter();
 const auth = useAuthStore();
 const sync = useSyncStore();
 const { t, locale } = useI18n({ useScope: "global" });
-const syncLabel = computed(() => t("app." + sync.status));
+const syncKeys: Record<SyncStatus, "app.idle" | "app.syncing" | "app.synced" | "app.offline" | "app.syncError"> = {
+  idle: "app.idle",
+  syncing: "app.syncing",
+  online: "app.synced",
+  offline: "app.offline",
+  error: "app.syncError"
+};
+const syncLabel = computed(() => t(syncKeys[sync.status]));
 
 watch(
   [() => auth.activeCompany?.id, () => auth.activeRole],
@@ -41,14 +48,7 @@ async function logout(): Promise<void> {
       </RouterLink>
 
       <div class="flex shrink-0 items-center gap-2 sm:gap-3">
-        <button
-          v-if="auth.activeCompany"
-          type="button"
-          class="flex items-center gap-2 rounded-lg border border-slate-200 px-2 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-wait disabled:opacity-60 sm:px-3"
-          :disabled="sync.isBusy || sync.status === 'offline'"
-          :title="sync.errorMessage || t('app.synced')"
-          @click="sync.syncNow"
-        >
+        <button v-if="auth.activeCompany" type="button" class="flex items-center gap-2 rounded-lg border border-slate-200 px-2 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-wait disabled:opacity-60 sm:px-3" :disabled="sync.isBusy || sync.status === 'offline'" :title="sync.errorMessage || syncLabel" @click="sync.syncNow">
           <span class="h-2 w-2 rounded-full" :class="{
             'bg-emerald-500': sync.status === 'online',
             'bg-amber-500': sync.status === 'syncing',
