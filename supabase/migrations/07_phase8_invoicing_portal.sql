@@ -134,8 +134,8 @@ begin
  if not public.has_company_role(p_company_id,array['company_admin','manager']::public.app_role[]) then raise exception 'Insufficient invoice permissions.' using errcode='42501'; end if;
  if not exists(select 1 from public.clients where id=p_client_id and company_id=p_company_id and deleted_at is null) then raise exception 'Client not found.' using errcode='23503'; end if;
  if jsonb_typeof(p_items)<>'array' or jsonb_array_length(p_items)=0 then raise exception 'At least one item is required.' using errcode='22023'; end if;
- insert into public.invoices(company_id,client_id,invoice_number,issue_date,due_date,currency_code,notes,created_by)
- values(p_company_id,p_client_id,trim(p_invoice_number),p_issue_date,p_due_date,upper(p_currency_code),nullif(trim(p_notes),''),auth.uid()) returning id into v_id;
+ insert into public.invoices(company_id,client_id,invoice_number,issue_date,due_date,currency_code,status,notes,created_by)
+ values(p_company_id,p_client_id,trim(p_invoice_number),p_issue_date,p_due_date,upper(p_currency_code),'sent',nullif(trim(p_notes),''),auth.uid()) returning id into v_id;
  for v_item in select value from jsonb_array_elements(p_items) loop
   insert into public.invoice_items(company_id,invoice_id,description,quantity,unit_price,tva_rate)
   values(p_company_id,v_id,trim(v_item->>'description'),(v_item->>'quantity')::numeric,(v_item->>'unit_price')::numeric,coalesce((v_item->>'tva_rate')::numeric,0));
