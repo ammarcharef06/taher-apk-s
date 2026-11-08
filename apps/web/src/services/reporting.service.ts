@@ -65,10 +65,7 @@ export async function buildCompanyReport(
     throw new Error("The report date range is invalid.");
   }
 
-  const [
-    cashRows, openingRows, expenseRows, wageRows, wagePayments,
-    advanceRows, socialRows, workers, archiveRows
-  ] = await Promise.all([
+  const [cashRows, openingRows, expenseRows, wageRows, wagePayments, advanceRows, socialRows, workers, archiveRows] = await Promise.all([
     localDb.cashTransactions.where("company_id").equals(companyId).toArray(),
     localDb.cashOpeningBalances.where("company_id").equals(companyId).toArray(),
     localDb.expenses.where("company_id").equals(companyId).toArray(),
@@ -91,15 +88,9 @@ export async function buildCompanyReport(
   const monthKeys = monthsBetween(from, to);
 
   const monthly = monthKeys.map(month => {
-    const income = cash
-      .filter(row => row.transaction_date.startsWith(month) && row.transaction_type === "income")
-      .reduce((sum, row) => sum + row.amount, 0);
-    const cashExpenses = cash
-      .filter(row => row.transaction_date.startsWith(month) && row.transaction_type === "expense")
-      .reduce((sum, row) => sum + row.amount, 0);
-    const payroll = payments
-      .filter(row => row.payment_date.startsWith(month))
-      .reduce((sum, row) => sum + row.amount, 0);
+    const income = cash.filter(row => row.transaction_date.startsWith(month) && row.transaction_type === "income").reduce((sum, row) => sum + row.amount, 0);
+    const cashExpenses = cash.filter(row => row.transaction_date.startsWith(month) && row.transaction_type === "expense").reduce((sum, row) => sum + row.amount, 0);
+    const payroll = payments.filter(row => row.payment_date.startsWith(month)).reduce((sum, row) => sum + row.amount, 0);
     return { month, income: roundMoney(income), cashExpenses: roundMoney(cashExpenses), payroll: roundMoney(payroll) };
   });
 
@@ -125,16 +116,15 @@ export async function buildCompanyReport(
     cashIncome: roundMoney(cashInRange.filter(row => row.transaction_type === "income").reduce((sum, row) => sum + row.amount, 0)),
     cashOutflow: roundMoney(cashInRange.filter(row => row.transaction_type === "expense").reduce((sum, row) => sum + row.amount, 0)),
     expensesTotal: roundMoney(expenses.reduce((sum, row) => sum + row.amount_ttc, 0)),
-    payrollTotal: roundMoney(wages.reduce((sum, row) => sum + row.net_due, 0)),
+    // Exclude carried balances here: they were counted in the preceding wage period.
+    payrollTotal: roundMoney(wages.reduce((sum, row) => sum + Math.max(0, row.net_due - row.carried_balance), 0)),
     advancesOutstanding: advancesBalance.outstanding,
     socialDue: roundMoney(social.reduce((sum, row) => sum + Math.max(0, row.amount_due - row.amount_paid), 0)),
     workersCount: workers.filter(row => row.deleted_at === null && row.status === "active").length,
     archivePending: archiveRows.filter(row => row.deleted_at === null && !row.delivered_to_accountant).length,
     transactionCount: cashInRange.length,
     monthly,
-    expenseCategories: [...grouped.entries()]
-      .map(([category, values]) => ({ category, amount: values.amount, count: values.count }))
-      .sort((a, b) => b.amount - a.amount),
+    expenseCategories: [...grouped.entries()].map(([category, values]) => ({ category, amount: values.amount, count: values.count })).sort((a, b) => b.amount - a.amount),
     generatedAt: new Date().toISOString()
   };
 }
