@@ -123,6 +123,9 @@ export interface LocalWagePayment {
   notes: string | null;
   created_by: string | null;
   created_at: string;
+  _synced?: SyncFlag;
+  _updated_at?: string;
+  _deleted?: string | null;
 }
 
 export interface LocalAdvance extends SyncMetadata {
@@ -265,6 +268,14 @@ export interface LocalClientSignature extends SyncMetadata {
   deleted_at: string | null;
 }
 
+export interface LocalSyncState {
+  id: string;
+  company_id: string;
+  entity: string;
+  last_pulled_at: string | null;
+  updated_at: string;
+}
+
 export interface SyncQueueItem {
   id?: number;
   company_id: string;
@@ -298,6 +309,7 @@ class TaherLocalDatabase extends Dexie {
   clientAccessTokens!: Table<LocalClientAccessToken, string>;
   clientSignatures!: Table<LocalClientSignature, string>;
   syncQueue!: Table<SyncQueueItem, number>;
+  syncStates!: Table<LocalSyncState, string>;
 
   constructor() {
     super("taher-accounting-ng");
@@ -328,6 +340,10 @@ class TaherLocalDatabase extends Dexie {
 
     this.version(3).stores({
       archives: "&id, company_id, document_date, document_type, [company_id+document_date], [company_id+source_id], source_id, updated_at, _synced, _deleted"
+    });
+
+    this.version(4).stores({
+      syncStates: "&id, company_id, entity, last_pulled_at"
     });
   }
 }
@@ -366,7 +382,8 @@ export async function clearLocalCompanyData(companyId: string): Promise<void> {
       localDb.correctionLogs,
       localDb.clientAccessTokens,
       localDb.clientSignatures,
-      localDb.syncQueue
+      localDb.syncQueue,
+      localDb.syncStates
     ],
     async () => {
       await Promise.all([
@@ -385,7 +402,8 @@ export async function clearLocalCompanyData(companyId: string): Promise<void> {
         localDb.correctionLogs.where("company_id").equals(companyId).delete(),
         localDb.clientAccessTokens.where("company_id").equals(companyId).delete(),
         localDb.clientSignatures.where("company_id").equals(companyId).delete(),
-        localDb.syncQueue.where("company_id").equals(companyId).delete()
+        localDb.syncQueue.where("company_id").equals(companyId).delete(),
+        localDb.syncStates.where("company_id").equals(companyId).delete()
       ]);
     }
   );
