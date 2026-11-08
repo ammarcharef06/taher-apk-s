@@ -1,0 +1,12 @@
+[package]
+name = "taher-accounting-ng"
+version = "1.0.0"
+description = "Taher Accounting NG desktop application"
+authors = ["Taher Accounting NG"]
+edition = "2021"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }

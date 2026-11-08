@@ -79,7 +79,7 @@
 | **قاعدة البيانات المحلية** | Dexie.js (IndexedDB) | تعمل أوفلاين وتدعم الاستعلامات المعقدة. |
 | **قاعدة البيانات السحابية** | Supabase (PostgreSQL) | مجانية، سريعة، وتدعم RLS للأمان. |
 | **المزامنة (Sync)** | Custom Sync Engine | مزامنة ثنائية الاتجاه (Pull/Push) مع طابور للعمليات. |
-| **تطبيق الأندرويد** | Capacitor 6 | تحويل الكود إلى APK أصلي. |
+| **تطبيق الأندرويد** | Capacitor 7 | تحويل الكود إلى APK أصلي. |
 | **تطبيق الويندوز** | Tauri 2 | حجم صغير جداً (10MB) وأداء ممتاز. |
 | **الاستضافة** | Vercel (ويب) + GitHub Actions (بناء) | مجاني 100%. |
 
@@ -117,3 +117,8 @@ Apply database migrations in numeric order. Phase 5 adds `supabase/migrations/06
 ## Phase 6 — Reports, charts, PDF, and languages
 
 Phase 6 adds offline-first financial reports, dashboard charts, browser-native PDF printing, and the Arabic/French/English locale foundation. See [docs/PHASE-6-REPORTS-I18N.md](docs/PHASE-6-REPORTS-I18N.md) for reporting definitions, installation, and acceptance checks.
+
+
+## Phase 7 — Platform builds and delivery
+
+The repository now includes a Capacitor Android wrapper, a Tauri 2 Windows wrapper, and three GitHub Actions workflows for Android APK builds, Windows EXE builds, and GitHub Pages deployment. See [docs/PHASE-7-PLATFORM-BUILDS.md](docs/PHASE-7-PLATFORM-BUILDS.md) for setup, required Supabase repository secrets, artifact locations, and validation notes.

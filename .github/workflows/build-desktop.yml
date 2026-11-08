@@ -1,0 +1,66 @@
+name: Build Windows Desktop
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    name: Windows installer
+    runs-on: windows-latest
+    env:
+      VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+      VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.4.1
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: apps/desktop/src-tauri -> target
+
+      - name: Install workspace dependencies
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Validate Supabase build configuration
+        shell: bash
+        run: |
+          test -n "$VITE_SUPABASE_URL" || { echo "Missing VITE_SUPABASE_URL repository secret"; exit 1; }
+          test -n "$VITE_SUPABASE_ANON_KEY" || { echo "Missing VITE_SUPABASE_ANON_KEY repository secret"; exit 1; }
+
+      - name: Typecheck and test
+        run: |
+          pnpm typecheck
+          pnpm test
+
+      - name: Build NSIS Windows installer
+        working-directory: apps/desktop
+        run: pnpm exec tauri build --bundles nsis
+
+      - name: Upload Windows EXE
+        uses: actions/upload-artifact@v4
+        with:
+          name: taher-accounting-windows-exe
+          path: apps/desktop/src-tauri/target/release/bundle/nsis/*-setup.exe
+          if-no-files-found: error
+          retention-days: 14

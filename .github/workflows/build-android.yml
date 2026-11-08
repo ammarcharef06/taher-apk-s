@@ -1,0 +1,78 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  android:
+    name: Android debug APK
+    runs-on: ubuntu-latest
+    env:
+      VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+      VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.4.1
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install workspace dependencies
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Validate Supabase build configuration
+        shell: bash
+        run: |
+          test -n "$VITE_SUPABASE_URL" || { echo "Missing VITE_SUPABASE_URL repository secret"; exit 1; }
+          test -n "$VITE_SUPABASE_ANON_KEY" || { echo "Missing VITE_SUPABASE_ANON_KEY repository secret"; exit 1; }
+
+      - name: Typecheck and test
+        run: |
+          pnpm typecheck
+          pnpm test
+
+      - name: Build web assets for Capacitor
+        run: pnpm --dir apps/web build:relative
+
+      - name: Generate Android native project
+        working-directory: apps/mobile
+        run: pnpm exec cap add android
+
+      - name: Sync Capacitor
+        working-directory: apps/mobile
+        run: pnpm exec cap sync android
+
+      - name: Build debug APK
+        working-directory: apps/mobile/android
+        run: ./gradlew --no-daemon assembleDebug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: taher-accounting-android-debug
+          path: apps/mobile/android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 14
