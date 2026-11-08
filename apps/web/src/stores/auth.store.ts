@@ -1,6 +1,7 @@
 import { computed, ref } from "vue";
 import { defineStore } from "pinia";
-import { createClient, type Session, type SupabaseClient, type User } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient, type User } from "@supabase/supabase-js";
+import { localDb } from "@taher/db";
 
 export type AppRole =
   | "super_admin"
@@ -11,14 +12,24 @@ export type AppRole =
   | "client";
 
 interface MembershipRecord {
+  id: string;
   company_id: string;
+  user_id: string;
   role: AppRole;
   is_active: boolean;
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
   companies: {
     id: string;
     name: string;
     owner_name: string;
+    logo_path: string | null;
+    fiscal_year_start_month: number;
     currency_code: string;
+    created_at: string;
+    updated_at: string;
+    deleted_at: string | null;
   } | null;
 }
 
@@ -27,13 +38,8 @@ interface ProfileRecord {
   display_name: string;
   phone: string | null;
   is_super_admin: boolean;
-}
-
-interface AuthState {
-  user: User | null;
-  session: Session | null;
-  profile: ProfileRecord | null;
-  memberships: MembershipRecord[];
+  created_at: string;
+  updated_at: string;
 }
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL?.trim() ?? "";
@@ -90,32 +96,119 @@ export const useAuthStore = defineStore("auth", () => {
 
   async function loadAccountState(currentUser: User): Promise<void> {
     const client = requireSupabase();
+    let remoteFailure: Error | null = null;
 
-    const [profileResult, membershipResult] = await Promise.all([
-      client
-        .from("profiles")
-        .select("id, display_name, phone, is_super_admin")
-        .eq("id", currentUser.id)
-        .maybeSingle(),
-      client
-        .from("company_memberships")
-        .select(
-          "company_id, role, is_active, companies(id, name, owner_name, currency_code)"
-        )
-        .eq("user_id", currentUser.id)
-        .eq("is_active", true)
-        .is("deleted_at", null)
-    ]);
+    try {
+      const [profileResult, membershipResult] = await Promise.all([
+        client
+          .from("profiles")
+          .select("id, display_name, phone, is_super_admin, created_at, updated_at")
+          .eq("id", currentUser.id)
+          .maybeSingle(),
+        client
+          .from("company_memberships")
+          .select(
+            "id, company_id, user_id, role, is_active, created_at, updated_at, deleted_at, companies(id, name, owner_name, logo_path, fiscal_year_start_month, currency_code, created_at, updated_at, deleted_at)"
+          )
+          .eq("user_id", currentUser.id)
+          .eq("is_active", true)
+          .is("deleted_at", null)
+      ]);
 
-    if (profileResult.error) {
-      throw new Error("تعذر تحميل الملف الشخصي: " + profileResult.error.message);
+      if (profileResult.error) {
+        throw new Error("تعذر تحميل الملف الشخصي: " + profileResult.error.message);
+      }
+      if (membershipResult.error) {
+        throw new Error("تعذر تحميل عضويات الشركات: " + membershipResult.error.message);
+      }
+      if (!profileResult.data) {
+        throw new Error("لم يُعثر على الملف الشخصي لهذا الحساب.");
+      }
+
+      const nextProfile = profileResult.data as ProfileRecord;
+      const nextMemberships = (membershipResult.data ?? []) as unknown as MembershipRecord[];
+      const cachedProfile = {
+        ...nextProfile,
+        _synced: 1 as const,
+        _updated_at: nextProfile.updated_at,
+        _deleted: null
+      };
+      const cachedMemberships = nextMemberships.map((membership) => ({
+        ...membership,
+        _synced: 1 as const,
+        _updated_at: membership.updated_at,
+        _deleted: membership.deleted_at
+      }));
+      const cachedCompanies = nextMemberships
+        .map((membership) => membership.companies)
+        .filter((company) => company !== null)
+        .map((company) => ({
+          ...company,
+          _synced: 1 as const,
+          _updated_at: company.updated_at,
+          _deleted: company.deleted_at
+        }));
+
+      await localDb.transaction(
+        "rw",
+        [localDb.profiles, localDb.memberships, localDb.companies],
+        async () => {
+          await localDb.profiles.put(cachedProfile);
+          if (cachedMemberships.length > 0) {
+            await localDb.memberships.bulkPut(cachedMemberships);
+          }
+          if (cachedCompanies.length > 0) {
+            await localDb.companies.bulkPut(cachedCompanies);
+          }
+        }
+      );
+
+      profile.value = nextProfile;
+      memberships.value = nextMemberships;
+      return;
+    } catch (error: unknown) {
+      remoteFailure =
+        error instanceof Error ? error : new Error("تعذر تحميل بيانات الحساب من السحابة.");
     }
-    if (membershipResult.error) {
-      throw new Error("تعذر تحميل عضويات الشركات: " + membershipResult.error.message);
-    }
 
-    profile.value = profileResult.data as ProfileRecord | null;
-    memberships.value = (membershipResult.data ?? []) as unknown as MembershipRecord[];
+    try {
+      const [cachedProfile, cachedMemberships] = await Promise.all([
+        localDb.profiles.get(currentUser.id),
+        localDb.memberships
+          .where("user_id")
+          .equals(currentUser.id)
+          .and((membership) => membership.is_active && membership._deleted === null)
+          .toArray()
+      ]);
+
+      if (!cachedProfile) {
+        throw remoteFailure ?? new Error("لا توجد بيانات حساب محفوظة على هذا الجهاز.");
+      }
+
+      const cachedCompanies = await localDb.companies.bulkGet(
+        cachedMemberships.map((membership) => membership.company_id)
+      );
+
+      profile.value = cachedProfile;
+      memberships.value = cachedMemberships.map((membership, index) => ({
+        ...membership,
+        companies: cachedCompanies[index]
+          ? {
+              id: cachedCompanies[index]!.id,
+              name: cachedCompanies[index]!.name,
+              owner_name: cachedCompanies[index]!.owner_name,
+              logo_path: cachedCompanies[index]!.logo_path,
+              fiscal_year_start_month: cachedCompanies[index]!.fiscal_year_start_month,
+              currency_code: cachedCompanies[index]!.currency_code,
+              created_at: cachedCompanies[index]!.created_at,
+              updated_at: cachedCompanies[index]!.updated_at,
+              deleted_at: cachedCompanies[index]!.deleted_at
+            }
+          : null
+      }));
+    } catch {
+      throw remoteFailure ?? new Error("تعذر تحميل بيانات الحساب محلياً.");
+    }
   }
 
   async function initialize(): Promise<void> {

@@ -59,8 +59,8 @@ async function submitLogin(): Promise<void> {
           <input v-model="password" class="form-input" type="password" autocomplete="current-password" required placeholder="كلمة المرور" />
         </label>
 
-        <p v-if="localError" role="alert" class="rounded-xl bg-red-50 px-4 py-3 text-sm leading-6 text-red-700">
-          {{ localError }}
+        <p v-if="localError || auth.errorMessage" role="alert" class="rounded-xl bg-red-50 px-4 py-3 text-sm leading-6 text-red-700">
+          {{ localError || auth.errorMessage }}
         </p>
 
         <button class="primary-button w-full" type="submit" :disabled="submitting || auth.loading">

@@ -4,6 +4,7 @@ import App from "./App.vue";
 import router from "./router";
 import { useAuthStore } from "./stores/auth.store";
 import { openLocalDatabase } from "@taher/db";
+import { logger } from "./utils/logger";
 import "./assets/main.css";
 
 async function bootstrap(): Promise<void> {
@@ -11,7 +12,7 @@ async function bootstrap(): Promise<void> {
     await openLocalDatabase();
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "تعذر فتح التخزين المحلي.";
-    console.error(message);
+    logger.error(message, error);
   }
 
   const app = createApp(App);
@@ -21,7 +22,12 @@ async function bootstrap(): Promise<void> {
   app.use(router);
 
   const authStore = useAuthStore(pinia);
-  await authStore.initialize();
+  try {
+    await authStore.initialize();
+  } catch (error: unknown) {
+    authStore.errorMessage =
+      error instanceof Error ? error.message : "تعذر تهيئة جلسة المستخدم.";
+  }
 
   await router.isReady();
   app.mount("#app");
