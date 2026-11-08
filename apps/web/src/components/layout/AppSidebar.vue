@@ -16,13 +16,15 @@ const allNavigation = [
   { name: "advances", labelKey: "app.advances", icon: "↗" },
   { name: "socialSecurity", labelKey: "app.socialSecurity", icon: "▤" },
   { name: "expenses", labelKey: "app.expenses", icon: "▤" },
-  { name: "archives", labelKey: "app.archives", icon: "▧" },\n  { name: "invoices", labelKey: "app.invoices", icon: "▤" },
+  { name: "archives", labelKey: "app.archives", icon: "▧" },
+  { name: "invoices", labelKey: "app.invoices", icon: "▤" },
   { name: "reports", labelKey: "app.reports", icon: "▥" },
   { name: "settings", labelKey: "app.settings", icon: "⚙" }
 ] as const;
 
 const navigation = computed(() => allNavigation.filter(item => {
-  if (item.name === "invoices") return auth.activeRole === "company_admin" || auth.activeRole === "manager";\n  if (item.name === "workers") return auth.activeRole === "company_admin" || auth.activeRole === "manager";
+  if (item.name === "invoices") return auth.activeRole === "company_admin" || auth.activeRole === "manager";
+  if (item.name === "workers") return auth.activeRole === "company_admin" || auth.activeRole === "manager";
   if (item.name === "cash") return ["company_admin", "manager", "data_entry"].includes(auth.activeRole ?? "");
   if (item.name === "wages" || item.name === "socialSecurity") return ["company_admin", "manager", "accountant"].includes(auth.activeRole ?? "");
   if (item.name === "expenses" || item.name === "archives") return ["company_admin", "manager", "accountant", "data_entry"].includes(auth.activeRole ?? "");
