@@ -157,15 +157,34 @@ async function pushPending(companyId: string): Promise<{ pushed: number; conflic
   if (!supabase) throw new Error("Supabase غير مهيأ.");
   const queue = await localDb.syncQueue
     .where("company_id").equals(companyId)
-    .and((item) => (item.status === "pending" || item.status === "failed") )
+    .and((item) => item.status === "pending" || item.status === "failed")
     .sortBy("created_at");
+
+  // Collapse multiple offline edits of the same row to the newest snapshot.
+  // Sending an older queued snapshot first could advance the server timestamp
+  // and incorrectly make a later local snapshot appear stale.
+  const groups = new Map<string, SyncQueueItem[]>();
+  for (const item of queue) {
+    const key = item.entity + "\\u0000" + item.record_id;
+    const group = groups.get(key) ?? [];
+    group.push(item);
+    groups.set(key, group);
+  }
+  const latestGroups = [...groups.values()].sort((a, b) =>
+    (a[a.length - 1]?.created_at ?? "").localeCompare(b[b.length - 1]?.created_at ?? "")
+  );
+
   let pushed = 0;
   let conflicts = 0;
   let failed = 0;
 
-  for (const item of queue) {
-    if (item.id === undefined) continue;
-    await localDb.syncQueue.update(item.id, { status: "processing", updated_at: new Date().toISOString() });
+  for (const group of latestGroups) {
+    const item = group[group.length - 1];
+    const ids = group.flatMap((entry) => entry.id === undefined ? [] : [entry.id]);
+    if (item.id === undefined || ids.length === 0) continue;
+    await localDb.syncQueue.bulkUpdate(group.flatMap((entry) =>
+      entry.id === undefined ? [] : [{ key: entry.id, changes: { status: "processing" as const, updated_at: new Date().toISOString() } }]
+    ));
     try {
       const payload = sanitizeSyncPayload(item.entity, asRecord(item.payload));
       const { data, error } = await supabase.rpc("sync_apply_record", {
@@ -179,17 +198,22 @@ async function pushPending(companyId: string): Promise<{ pushed: number; conflic
         conflicts += 1;
         await applyRemoteRecord(companyId, item.entity as SyncEntity, remote);
       }
-      await localDb.syncQueue.delete(item.id);
+      await localDb.syncQueue.bulkDelete(ids);
       pushed += 1;
     } catch (error) {
       failed += 1;
       const message = error instanceof Error ? error.message : "خطأ مزامنة غير معروف.";
-      await localDb.syncQueue.update(item.id, {
-        status: "failed",
-        retry_count: item.retry_count + 1,
-        last_error: message.slice(0, 1000),
-        updated_at: new Date().toISOString()
-      });
+      await localDb.syncQueue.bulkUpdate(group.flatMap((entry) =>
+        entry.id === undefined ? [] : [{
+          key: entry.id,
+          changes: {
+            status: "failed" as const,
+            retry_count: entry.retry_count + 1,
+            last_error: message.slice(0, 1000),
+            updated_at: new Date().toISOString()
+          }
+        }]
+      ));
     }
   }
   return { pushed, conflicts, failed };
