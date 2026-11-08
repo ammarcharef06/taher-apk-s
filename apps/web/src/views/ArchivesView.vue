@@ -32,5 +32,28 @@ onUnmounted(()=>window.removeEventListener("online",handleOnline));
 <div class="overflow-x-auto"><table class="w-full min-w-[950px] text-right text-sm"><thead class="bg-slate-50 text-xs text-slate-500"><tr><th class="px-4 py-3">التاريخ</th><th class="px-4 py-3">النوع</th><th class="px-4 py-3">الطرف</th><th class="px-4 py-3">رقم الوثيقة</th><th class="px-4 py-3">المبلغ</th><th class="px-4 py-3">مكان الحفظ</th><th class="px-4 py-3">الملف</th><th class="px-4 py-3">التسليم</th><th class="px-4 py-3">إجراءات</th></tr></thead><tbody class="divide-y divide-slate-100"><tr v-for="r in rows" :key="r.id"><td class="px-4 py-3">{{r.document_date}}</td><td class="px-4 py-3 font-semibold">{{r.document_type}}</td><td class="px-4 py-3">{{r.counterparty||"—"}}</td><td class="px-4 py-3">{{r.invoice_number||"—"}}</td><td class="px-4 py-3">{{fmt(r.amount)}}</td><td class="px-4 py-3">{{[r.cabinet,r.shelf].filter(Boolean).join(" / ")||"—"}}</td><td class="px-4 py-3"><button v-if="r.file_blob||r.storage_path" class="text-brand-700 underline" @click="openFile(r)">فتح {{r.original_file_name||"الملف"}}</button><span v-else class="text-slate-400">لا يوجد ملف</span></td><td class="px-4 py-3"><span :class="r.delivered_to_accountant?'text-emerald-700':'text-amber-700'">{{r.delivered_to_accountant?"تم التسليم":"بانتظار التسليم"}}</span></td><td class="px-4 py-3"><div class="flex items-center gap-2"><label v-if="canAttach" class="secondary-button !px-3 !py-2 cursor-pointer">{{uploading===r.id?"جارٍ الرفع...":"إرفاق"}}
 <input class="hidden" type="file" accept="application/pdf,image/jpeg,image/png,image/webp" :disabled="uploading===r.id" @change="addFile(r,$event)"></label><button v-if="canManage" class="secondary-button !px-3 !py-2" @click="toggleDelivered(r)">{{r.delivered_to_accountant?"إلغاء التسليم":"تسليم"}}</button><button v-if="canManage&&!r.source_id" class="text-xs text-red-600" @click="remove(r)">حذف</button></div></td></tr><tr v-if="!loading&&!rows.length"><td colspan="9" class="px-4 py-12 text-center text-slate-400">لا توجد وثائق أرشيف.</td></tr></tbody></table></div></div>
 <p class="text-xs leading-6 text-slate-400">الملفات المسموحة: PDF وJPG وPNG وWEBP، بحد أقصى 15 ميغابايت. يحتفظ IndexedDB بنسخة محلية، ويُرفع الملف إلى مساحة Supabase الخاصة عند الاتصال. تتطلب المزامنة الخلفية التلقائية معالجة طابور الملفات في مرحلة المزامنة.</p>
+  <div v-if="formOpen" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4" role="dialog" aria-modal="true" aria-labelledby="archive-create-title">
+    <form class="panel w-full max-w-2xl space-y-4 p-6" @submit.prevent="createArchive">
+      <div class="flex items-center justify-between gap-4">
+        <h2 id="archive-create-title" class="text-lg font-bold text-slate-900">إضافة وثيقة إلى الأرشيف</h2>
+        <button type="button" class="text-slate-500" aria-label="إغلاق" @click="formOpen=false">✕</button>
+      </div>
+      <div class="grid gap-3 sm:grid-cols-2">
+        <label class="form-field"><span class="text-sm">نوع الوثيقة</span><input v-model="form.document_type" class="form-input" required maxlength="120"></label>
+        <label class="form-field"><span class="text-sm">التاريخ</span><input v-model="form.document_date" class="form-input" type="date" required></label>
+        <label class="form-field"><span class="text-sm">الطرف / المورد</span><input v-model="form.counterparty" class="form-input" maxlength="160"></label>
+        <label class="form-field"><span class="text-sm">رقم الوثيقة</span><input v-model="form.invoice_number" class="form-input" maxlength="120"></label>
+        <label class="form-field"><span class="text-sm">المبلغ</span><input v-model.number="form.amount" class="form-input" type="number" min="0" step="0.01" required></label>
+        <label class="form-field"><span class="text-sm">الخزانة</span><input v-model="form.cabinet" class="form-input" maxlength="120"></label>
+        <label class="form-field"><span class="text-sm">الرف</span><input v-model="form.shelf" class="form-input" maxlength="120"></label>
+      </div>
+      <label class="form-field"><span class="text-sm">ملاحظات</span><textarea v-model="form.notes" class="form-input" rows="3" maxlength="1000"></textarea></label>
+      <label class="flex items-center gap-2 text-sm"><input v-model="form.delivered_to_accountant" type="checkbox"> تم تسليم الوثيقة للمحاسب</label>
+      <div class="flex justify-end gap-2">
+        <button type="button" class="secondary-button" :disabled="saving" @click="formOpen=false">إلغاء</button>
+        <button type="submit" class="primary-button" :disabled="saving">{{saving?"جارٍ الحفظ...":"حفظ الوثيقة"}}</button>
+      </div>
+    </form>
+  </div>
 </section>
 </template>

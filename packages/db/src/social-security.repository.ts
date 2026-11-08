@@ -3,8 +3,7 @@ import {
   filterSocialSecurityDeclarations,
   validateSocialSecurityInput,
   type SocialSecurityFilters,
-  type SocialSecurityInput,
-  type SocialSecurityRecord
+  type SocialSecurityInput
 } from "@taher/core";
 import {
   localDb,
@@ -54,7 +53,7 @@ export async function listSocialSecurityDeclarations(
     .toArray();
 
   return filterSocialSecurityDeclarations(
-    records as SocialSecurityRecord[],
+    records,
     filters
   );
 }

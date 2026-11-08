@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import type { LocalCashTransaction } from "@taher/db";
+import type { CashTransactionRecord } from "@taher/core";
 
 defineProps<{
-  transaction: LocalCashTransaction;
+  transaction: CashTransactionRecord;
   companyName: string;
   currencyCode: string;
 }>();

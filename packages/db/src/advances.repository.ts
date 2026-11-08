@@ -3,8 +3,7 @@ import {
   filterAdvances,
   validateAdvanceInput,
   type AdvanceFilters,
-  type AdvanceInput,
-  type AdvanceRecord
+  type AdvanceInput
 } from "@taher/core";
 import {
   localDb,
@@ -243,7 +242,7 @@ export async function listAdvances(
     .and((movement) => movement.deleted_at === null)
     .toArray();
 
-  return filterAdvances(records as AdvanceRecord[], filters);
+  return filterAdvances(records, filters);
 }
 
 export async function listWorkerAdvanceBalances(

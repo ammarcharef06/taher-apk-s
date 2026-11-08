@@ -7,8 +7,8 @@ import {
   saveCashOpeningBalance,
   updateCashTransaction
 } from "@taher/db";
-import type { CashOverview, LocalCashTransaction } from "@taher/db";
-import type { CashTransactionInput, CashTransactionType } from "@taher/core";
+import type { CashOverview } from "@taher/db";
+import type { CashTransactionInput, CashTransactionRecord, CashTransactionType } from "@taher/core";
 import { useAuthStore } from "../stores/auth.store";
 import CashReceipt from "../components/cash/CashReceipt.vue";
 
@@ -52,7 +52,7 @@ const successMessage = ref("");
 const formOpen = ref(false);
 const openingFormOpen = ref(false);
 const editingId = ref<string | null>(null);
-const selectedReceipt = ref<LocalCashTransaction | null>(null);
+const selectedReceipt = ref<CashTransactionRecord | null>(null);
 
 const emptyCashForm = (): CashTransactionInput => ({
   transaction_date: today(),
@@ -83,7 +83,7 @@ function formatMoney(value: number): string {
   }).format(value);
 }
 
-function setCashForm(transaction?: LocalCashTransaction): void {
+function setCashForm(transaction?: CashTransactionRecord): void {
   const values = transaction
     ? {
         transaction_date: transaction.transaction_date,
@@ -134,7 +134,7 @@ function openCreateForm(): void {
   successMessage.value = "";
 }
 
-function openEditForm(transaction: LocalCashTransaction): void {
+function openEditForm(transaction: CashTransactionRecord): void {
   if (!canManage.value) return;
   editingId.value = transaction.id;
   setCashForm(transaction);
@@ -185,7 +185,7 @@ async function saveTransaction(): Promise<void> {
   }
 }
 
-async function removeTransaction(transaction: LocalCashTransaction): Promise<void> {
+async function removeTransaction(transaction: CashTransactionRecord): Promise<void> {
   if (!canManage.value || !companyId.value) return;
   if (!window.confirm("هل تريد حذف حركة الصندوق؟ سيُسجّل الحذف كحذف ناعم.")) return;
 
@@ -235,7 +235,7 @@ async function saveOpening(): Promise<void> {
   }
 }
 
-async function printReceipt(transaction: LocalCashTransaction): Promise<void> {
+async function printReceipt(transaction: CashTransactionRecord): Promise<void> {
   selectedReceipt.value = transaction;
   await nextTick();
   window.print();

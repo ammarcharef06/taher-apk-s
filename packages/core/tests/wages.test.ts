@@ -65,7 +65,7 @@ describe("wage business logic", () => {
         0,
         0
       )
-    ).toThrow("يتجاوز صافي المستحق");
+    ).toThrow("إجمالي الاقتطاعات والتسبيقات يتجاوز");
   });
 
   it("limits paid amount to net due", () => {

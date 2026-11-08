@@ -7,7 +7,7 @@ export async function listArchives(companyId:string,filters:ArchiveFilters={}):P
  const rows=await localDb.archives.where("company_id").equals(companyId).and(r=>r.deleted_at===null&&r._deleted===null).toArray();
  return filterArchives(rows as never,filters) as LocalArchive[];
 }
-export async function saveArchive(companyId:string,input:ArchiveInput,userId:string|null,archiveId?:string):Promise<LocalArchive>{
+export async function saveArchive(companyId:string,input:ArchiveInput,_userId:string|null,archiveId?:string):Promise<LocalArchive>{
  if(!companyId.trim())throw new Error("معرّف الشركة مطلوب.");const data=validateArchiveInput(input);const timestamp=now();
  return localDb.transaction("rw",[localDb.archives,localDb.syncQueue],async()=>{
   const previous=archiveId?await localDb.archives.get(archiveId):undefined;
@@ -16,7 +16,7 @@ export async function saveArchive(companyId:string,input:ArchiveInput,userId:str
    const duplicate=await localDb.archives.where("[company_id+source_id]").equals([companyId,data.source_id]).first();
    if(duplicate&&duplicate.id!==archiveId)throw new Error("توجد وثيقة أرشيف مرتبطة بهذا السجل بالفعل.");
   }
-  const record:LocalArchive={...(previous??{} as LocalArchive),...data,id:previous?.id??id(),company_id:companyId,storage_path:previous?.storage_path??null,file_blob:previous?.file_blob??null,original_file_name:previous?.original_file_name??null,mime_type:previous?.mime_type??null,file_size:previous?.file_size??null,created_at:previous?.created_at??timestamp,updated_at:timestamp,deleted_at:null,_synced:0,_updated_at:timestamp,_deleted:null};
+  const record:LocalArchive={...(previous??{} as LocalArchive),...data,id:previous?.id??id(),company_id:companyId,storage_path:previous?.storage_path??null,file_blob:previous?.file_blob??null,original_file_name:previous?.original_file_name??null,mime_type:previous?.mime_type??null,file_size:previous?.file_size??null,created_at:previous?.created_at??timestamp,updated_at:timestamp,deleted_at:null,_synced:0 as const,_updated_at:timestamp,_deleted:null};
   await localDb.archives.put(record);await localDb.syncQueue.add(queue(companyId,record.id,previous?"update":"insert",{...record,file_blob:null},timestamp));return record;
  });
 }
@@ -29,7 +29,7 @@ export async function saveArchiveFileLocal(companyId:string,archiveId:string,fil
  return localDb.transaction("rw",[localDb.archives,localDb.syncQueue],async()=>{
   const row=await localDb.archives.get(archiveId);
   if(!row||row.company_id!==companyId||row.deleted_at!==null)throw new Error("وثيقة الأرشيف غير موجودة.");
-  const updated:LocalArchive={...row,file_blob:file,original_file_name:fileName.trim().slice(0,255),mime_type:file.type,file_size:file.size,updated_at:timestamp,_updated_at:timestamp,_synced:0};
+  const updated:LocalArchive={...row,file_blob:file,original_file_name:fileName.trim().slice(0,255),mime_type:file.type,file_size:file.size,updated_at:timestamp,_updated_at:timestamp,_synced:0 as const};
   await localDb.archives.put(updated);
   await localDb.syncQueue.add(queue(companyId,archiveId,"update",{...updated,file_blob:null},timestamp));
   return updated;
@@ -39,21 +39,21 @@ export async function setArchiveStoragePath(companyId:string,archiveId:string,pa
  const timestamp=now();
  await localDb.transaction("rw",[localDb.archives,localDb.syncQueue],async()=>{
   const row=await localDb.archives.get(archiveId);if(!row||row.company_id!==companyId)throw new Error("وثيقة الأرشيف غير موجودة.");
-  const updated={...row,storage_path:path,updated_at:timestamp,_updated_at:timestamp,_synced:0};
+  const updated={...row,storage_path:path,updated_at:timestamp,_updated_at:timestamp,_synced:0 as const};
   await localDb.archives.put(updated);await localDb.syncQueue.add(queue(companyId,archiveId,"update",{...updated,file_blob:null},timestamp));
  });
 }
 export async function setArchiveDelivered(companyId:string,archiveId:string,delivered:boolean):Promise<void>{
  const timestamp=now();await localDb.transaction("rw",[localDb.archives,localDb.syncQueue],async()=>{
  const row=await localDb.archives.get(archiveId);if(!row||row.company_id!==companyId||row.deleted_at!==null)throw new Error("وثيقة الأرشيف غير موجودة.");
- const updated={...row,delivered_to_accountant:delivered,delivered_at:delivered?timestamp:null,updated_at:timestamp,_updated_at:timestamp,_synced:0};
+ const updated={...row,delivered_to_accountant:delivered,delivered_at:delivered?timestamp:null,updated_at:timestamp,_updated_at:timestamp,_synced:0 as const};
  await localDb.archives.put(updated);await localDb.syncQueue.add(queue(companyId,archiveId,"update",{...updated,file_blob:null},timestamp));
  });
 }
 export async function deleteArchive(companyId:string,archiveId:string):Promise<void>{
  const timestamp=now();await localDb.transaction("rw",[localDb.archives,localDb.syncQueue],async()=>{
  const row=await localDb.archives.get(archiveId);if(!row||row.company_id!==companyId||row.deleted_at!==null)throw new Error("وثيقة الأرشيف غير موجودة.");
- const updated={...row,deleted_at:timestamp,updated_at:timestamp,_updated_at:timestamp,_deleted:timestamp,_synced:0};
+ const updated={...row,deleted_at:timestamp,updated_at:timestamp,_updated_at:timestamp,_deleted:timestamp,_synced:0 as const};
  await localDb.archives.put(updated);await localDb.syncQueue.add(queue(companyId,archiveId,"update",{...updated,file_blob:null},timestamp));
  });
 }
