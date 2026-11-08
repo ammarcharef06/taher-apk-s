@@ -131,6 +131,23 @@ create trigger write_audit_log after insert or update or delete on public.invoic
 drop trigger if exists write_audit_log on public.invoice_payments;
 create trigger write_audit_log after insert on public.invoice_payments for each row execute function public.write_audit_log();
 
+drop trigger if exists write_audit_log on public.client_signatures;
+create or replace function public.write_client_signature_audit()
+returns trigger language plpgsql security definer set search_path=public,auth,pg_temp as $
+declare v_old jsonb; v_new jsonb; v_row jsonb; v_company uuid; v_id uuid;
+begin
+ if tg_op='DELETE' then v_old:=to_jsonb(old)-'signature_data_url'; v_row:=v_old;
+ else v_new:=to_jsonb(new)-'signature_data_url'; v_row:=v_new; end if;
+ v_company:=nullif(v_row->>'company_id','')::uuid; v_id:=nullif(v_row->>'id','')::uuid;
+ if v_company is not null then
+  insert into public.audit_logs(company_id,actor_user_id,action,table_name,record_id,before_data,after_data)
+  values(v_company,auth.uid(),lower(tg_op),tg_table_name,v_id,v_old,v_new);
+ end if;
+ if tg_op='DELETE' then return old; end if; return new;
+end $;
+create trigger write_client_signature_audit after insert or update or delete on public.client_signatures
+for each row execute function public.write_client_signature_audit();
+
 create or replace function public.recalculate_invoice(p_company_id uuid,p_invoice_id uuid)
 returns void language plpgsql security definer set search_path=public,auth,pg_temp as $$
 declare v_sub numeric(14,2); v_tax numeric(14,2); v_paid numeric(14,2);
