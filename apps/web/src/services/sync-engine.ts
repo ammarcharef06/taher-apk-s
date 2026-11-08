@@ -98,7 +98,8 @@ async function recordLocalConflict(
 async function applyRemoteRecord(
   companyId: string,
   entity: SyncEntity,
-  remoteInput: Record<string, unknown>
+  remoteInput: Record<string, unknown>,
+  forceServer: boolean = false
 ): Promise<"applied" | "local_wins" | "unchanged"> {
   const remote = { ...remoteInput };
   const recordId = String(remote.id ?? "");
@@ -122,13 +123,15 @@ async function applyRemoteRecord(
       .and((item) => item.entity === entity && item.record_id === localRecordId)
       .toArray();
 
-    if (local && queued.length > 0) {
+    if (local && queued.length > 0 && !forceServer) {
       const winner = chooseSyncWinner(
         { updated_at: local.updated_at, _updated_at: local._updated_at, created_at: local.created_at },
         { updated_at: remote.updated_at as string | undefined, created_at: remote.created_at as string | undefined }
       );
       if (winner === "local") return "local_wins";
       await recordLocalConflict(companyId, entity, recordId, local, remote);
+      await localDb.syncQueue.bulkDelete(queued.flatMap((item) => item.id === undefined ? [] : [item.id]));
+    } else if (forceServer && queued.length > 0) {
       await localDb.syncQueue.bulkDelete(queued.flatMap((item) => item.id === undefined ? [] : [item.id]));
     }
 
@@ -197,6 +200,8 @@ async function pushPending(companyId: string): Promise<{ pushed: number; conflic
       if (response.applied === false && item.entity !== "wage_payments") {
         conflicts += 1;
         await applyRemoteRecord(companyId, item.entity as SyncEntity, remote);
+      } else {
+        await applyRemoteRecord(companyId, item.entity as SyncEntity, remote, true);
       }
       await localDb.syncQueue.bulkDelete(ids);
       pushed += 1;
