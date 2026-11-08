@@ -2,7 +2,7 @@
 
 Apply `supabase/migrations/07_phase8_invoicing_portal.sql` after migrations 01–06. The migration is additive and reuses the existing clients, client_access_tokens, client_signatures, archives and private company-archives bucket.
 
-Company Admin/Manager users open Invoices, add/select a client, set a unique invoice number and dates, and add one or more item lines with description, quantity, unit price and TVA. PostgreSQL calculates totals. New invoices are marked sent. Create link generates a random bearer URL; only its SHA-256 digest is stored. Share it privately. Revoke a token by setting revoked_at; set expires_at for expiry.
+Company Admin/Manager users open Invoices, add/select a client, set a unique invoice number and dates, and add one or more item lines with description, quantity, unit price and TVA. PostgreSQL calculates totals. New invoices are marked sent. Create link generates a random bearer URL; only its SHA-256 digest is stored. Share it privately. Tokens default to a 30-day expiry. Revoke a token by setting revoked_at; set a custom expires_at when issuing through the RPC.
 
 For Auth-based client access, create a Supabase Auth user and associate its UUID with clients.user_id using an authorized workflow. RLS exposes only that client's invoices, invoice items, payments and archive rows explicitly linked to an invoice. Storage RLS additionally checks that the object path equals the attached archive's storage_path.
 
