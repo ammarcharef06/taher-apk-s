@@ -15,7 +15,6 @@ import {
 import { supabase } from "../stores/auth.store";
 
 const PAGE_SIZE = 500;
-const MAX_RETRIES = 8;
 const TABLES: Record<SyncEntity, Table<any, any>> = {
   workers: localDb.workers,
   cash_transactions: localDb.cashTransactions,
@@ -152,7 +151,7 @@ async function pushPending(companyId: string): Promise<{ pushed: number; conflic
   if (!supabase) throw new Error("Supabase غير مهيأ.");
   const queue = await localDb.syncQueue
     .where("company_id").equals(companyId)
-    .and((item) => (item.status === "pending" || item.status === "failed") && item.retry_count < MAX_RETRIES)
+    .and((item) => (item.status === "pending" || item.status === "failed") )
     .sortBy("created_at");
   let pushed = 0;
   let conflicts = 0;
