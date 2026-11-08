@@ -73,14 +73,14 @@ const routes: RouteRecordRaw[] = [
   {
     path: "/expenses",
     name: "expenses",
-    component: () => import("../views/PlaceholderView.vue"),
-    meta: { requiresAuth: true, title: "المصاريف والمشتريات" }
+    component: () => import("../views/ExpensesView.vue"),
+    meta: { requiresAuth: true, title: "المصاريف والمشتريات", allowedRoles: ["company_admin", "manager", "accountant", "data_entry"] }
   },
   {
     path: "/archives",
     name: "archives",
-    component: () => import("../views/PlaceholderView.vue"),
-    meta: { requiresAuth: true, title: "الأرشيف" }
+    component: () => import("../views/ArchivesView.vue"),
+    meta: { requiresAuth: true, title: "الأرشيف", allowedRoles: ["company_admin", "manager", "accountant", "data_entry"] }
   },
   {
     path: "/reports",
