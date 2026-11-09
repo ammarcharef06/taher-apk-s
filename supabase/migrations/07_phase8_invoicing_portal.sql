@@ -134,7 +134,7 @@ create trigger write_audit_log after insert on public.invoice_payments for each 
 
 drop trigger if exists write_audit_log on public.client_signatures;
 create or replace function public.write_client_signature_audit()
-returns trigger language plpgsql security definer set search_path=public,auth,pg_temp as $
+returns trigger language plpgsql security definer set search_path=public,auth,pg_temp as $$
 declare v_old jsonb; v_new jsonb; v_row jsonb; v_company uuid; v_id uuid;
 begin
  if tg_op='DELETE' then v_old:=to_jsonb(old)-'signature_data_url'; v_row:=v_old;
@@ -145,7 +145,7 @@ begin
   values(v_company,auth.uid(),lower(tg_op),tg_table_name,v_id,v_old,v_new);
  end if;
  if tg_op='DELETE' then return old; end if; return new;
-end $;
+end $$;
 create trigger write_client_signature_audit after insert or update or delete on public.client_signatures
 for each row execute function public.write_client_signature_audit();
 
@@ -178,7 +178,7 @@ begin
 end $$;
 
 create or replace function public.guard_invoice_payment()
-returns trigger language plpgsql security definer set search_path=public,auth,pg_temp as $
+returns trigger language plpgsql security definer set search_path=public,auth,pg_temp as $$
 declare v_total numeric(14,2); v_paid numeric(14,2);
 begin
  select total into v_total from public.invoices where id=new.invoice_id and company_id=new.company_id and deleted_at is null for update;
@@ -186,13 +186,13 @@ begin
  select coalesce(sum(amount),0) into v_paid from public.invoice_payments where invoice_id=new.invoice_id and company_id=new.company_id;
  if v_paid+new.amount>v_total then raise exception 'Payment exceeds invoice balance.' using errcode='23514'; end if;
  return new;
-end $;
+end $$;
 create or replace function public.refresh_invoice_after_payment()
-returns trigger language plpgsql security definer set search_path=public,auth,pg_temp as $
+returns trigger language plpgsql security definer set search_path=public,auth,pg_temp as $$
 begin
  perform public.recalculate_invoice(new.company_id,new.invoice_id);
  return new;
-end $;
+end $$;
 drop trigger if exists guard_invoice_payment_before_insert on public.invoice_payments;
 create trigger guard_invoice_payment_before_insert before insert on public.invoice_payments
 for each row execute function public.guard_invoice_payment();
