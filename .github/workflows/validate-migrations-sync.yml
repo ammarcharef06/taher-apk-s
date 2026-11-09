@@ -1,0 +1,68 @@
+name: Validate migrations and sync
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: SQL structure, typecheck, and sync tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.4.1
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install workspace dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Validate migration DO blocks
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+          import sys
+
+          failures = []
+          for path in sorted(Path("supabase/migrations").glob("*.sql")):
+              sql = path.read_text(encoding="utf-8")
+              for match in re.finditer(r"\\bdo\\s+\\$\\$(.*?)\\$\\$\\s*;", sql, re.IGNORECASE | re.DOTALL):
+                  body = match.group(1).strip()
+                  if not re.match(r"^begin\\b", body, re.IGNORECASE):
+                      failures.append(f"{path}: DO block is missing BEGIN")
+                  if not re.search(r"end\\s*;\\s*$", body, re.IGNORECASE):
+                      failures.append(f"{path}: DO block is missing END;")
+              if re.search(r"\\bdo\\s+\\$(?!\\$)", sql, re.IGNORECASE):
+                  failures.append(f"{path}: malformed single-dollar DO delimiter")
+              if re.search(r"\\bend\\s+\\$\\s*;", sql, re.IGNORECASE):
+                  failures.append(f"{path}: malformed single-dollar DO terminator")
+
+          if failures:
+              print("\\n".join(failures))
+              sys.exit(1)
+          print("Migration DO block structure is valid.")
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Run unit and sync tests
+        run: pnpm test
+
+      - name: Build web application
+        run: pnpm build
