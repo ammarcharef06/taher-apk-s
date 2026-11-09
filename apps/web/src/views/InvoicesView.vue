@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from "vue";
+import { useToast } from "../composables/toast";
+import { computed, onMounted, reactive, ref, watch } from "vue";
 import { useAuthStore } from "../stores/auth.store";
 import {
   addClient, listClients, listInvoices, mintPortalUrl, recordInvoicePayment, saveInvoice,
@@ -7,6 +8,7 @@ import {
 } from "../services/invoicing.service";
 
 const auth = useAuthStore();
+const toast = useToast();
 const companyId = computed(() => auth.activeMembership?.company_id ?? "");
 const allowed = computed(() => ["company_admin", "manager"].includes(auth.activeRole ?? ""));
 const clients = ref<any[]>([]);
@@ -15,6 +17,7 @@ const loading = ref(false);
 const saving = ref(false);
 const error = ref("");
 const message = ref("");
+watch([error, message], ([failure, success]) => { if (failure) toast.error(failure); if (success) toast.success(success); });
 const open = ref(false);
 const newClient = ref(false);
 const portal = ref("");
