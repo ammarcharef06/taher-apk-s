@@ -98,7 +98,7 @@ onBeforeUnmount(() => window.removeEventListener("taher:demo-data-created", hand
           <span class="text-sm font-medium text-slate-500">{{ item.label }}</span>
           <span class="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-50 text-lg text-brand-700">{{ item.icon }}</span>
         </div>
-        <p class="mt-5 break-words text-2xl font-black tracking-tight text-[#0A192F]">{{ loading ? "…" : item.value }}</p>
+        <p class="mt-5 break-words text-2xl font-black tracking-tight" :class="item.label === t('dashboard.monthlyExpenses') ? 'text-[#EF4444]' : item.label === t('dashboard.cashBalance') ? 'text-[#10B981]' : 'text-[#0A192F]'">{{ loading ? "…" : item.value }}</p>
       </article>
       <article v-if="!indicators.length" class="panel p-5 text-sm text-slate-500 sm:col-span-2 xl:col-span-4">{{ loading ? t("common.loading") : t("dashboard.noData") }}</article>
     </div>
