@@ -126,4 +126,4 @@ The repository now includes a Capacitor Android wrapper, a Tauri 2 Windows wrapp
 
 ## Phase 8 — Invoicing and Client Portal
 
-See [docs/PHASE-8-CLIENT-PORTAL.md](docs/PHASE-8-CLIENT-PORTAL.md) for migration order, bearer-link handling, RLS boundaries, deployment requirements and acceptance checks. Apply migration 07 after reviewing its limitations. Token links are private credentials; authenticated client accounts are required for private archive downloads.
+See [docs/PHASE-8-CLIENT-PORTAL.md](docs/PHASE-8-CLIENT-PORTAL.md) for migration order, offline invoice and payment synchronization, cash-box linkage, bearer-link handling, RLS boundaries and acceptance checks. Apply migrations 07 and 08 after testing them in staging. Cash payments create one linked cash-box income movement; bank payments do not change the physical cash balance. Token links are private credentials; authenticated client accounts are required for private archive downloads.
