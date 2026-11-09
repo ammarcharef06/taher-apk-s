@@ -74,6 +74,7 @@ declare
   v_sql text;
   v_result jsonb;
   v_payload jsonb;
+  v_existing_archive_id uuid;
 begin
   if auth.uid() is null then
     raise exception 'Authentication required.' using errcode='28000';
@@ -147,8 +148,27 @@ begin
     raise exception 'updated_at is required for mutable sync records.' using errcode='22023';
   end if;
   v_payload:=p_record-'_synced'-'_updated_at'-'_deleted'-'file_blob';
-  if p_entity='invoices' then
+  if p_entity='expenses' then
+    v_payload:=v_payload-'amount_ttc';
+  elsif p_entity='invoices' then
     v_payload:=v_payload-'subtotal'-'tax_total'-'total'-'paid_amount';
+  end if;
+
+  -- Preserve Phase 5's canonical archive reconciliation: financial inserts may
+  -- already have created the server archive before the local archive queue arrives.
+  if p_entity='archives'
+     and nullif(v_payload->>'source_table','') is not null
+     and nullif(v_payload->>'source_id','') is not null then
+    select a.id into v_existing_archive_id
+    from public.archives a
+    where a.company_id=v_company_id
+      and a.source_table=v_payload->>'source_table'
+      and a.source_id=(v_payload->>'source_id')::uuid
+    limit 1;
+    if v_existing_archive_id is not null then
+      v_record_id:=v_existing_archive_id;
+      v_payload:=jsonb_set(v_payload,'{id}',to_jsonb(v_existing_archive_id::text),true);
+    end if;
   end if;
 
   select
