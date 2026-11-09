@@ -25,7 +25,11 @@ const TABLES: Record<SyncEntity, Table<any, any>> = {
   advances: localDb.advances,
   social_security_declarations: localDb.socialSecurityDeclarations,
   expenses: localDb.expenses,
-  archives: localDb.archives
+  archives: localDb.archives,
+  clients: localDb.clients,
+  invoices: localDb.invoices,
+  invoice_items: localDb.invoiceItems,
+  invoice_payments: localDb.invoicePayments
 };
 const PULL_FIELD: Record<SyncEntity, "updated_at" | "created_at"> = {
   workers: "updated_at",
@@ -36,7 +40,11 @@ const PULL_FIELD: Record<SyncEntity, "updated_at" | "created_at"> = {
   advances: "updated_at",
   social_security_declarations: "updated_at",
   expenses: "updated_at",
-  archives: "updated_at"
+  archives: "updated_at",
+  clients: "updated_at",
+  invoices: "updated_at",
+  invoice_items: "created_at",
+  invoice_payments: "created_at"
 };
 
 export interface SyncResult {
@@ -62,11 +70,12 @@ function allowedPullEntities(role: string): SyncEntity[] {
   if (role === "accountant") {
     return [
       "workers", "wages", "wage_payments", "advances",
-      "social_security_declarations", "expenses", "archives"
+      "social_security_declarations", "expenses", "archives",
+      "clients", "invoices", "invoice_items", "invoice_payments"
     ];
   }
   if (role === "data_entry") {
-    return ["workers", "cash_transactions", "advances", "expenses", "archives"];
+    return ["workers", "cash_transactions", "advances", "expenses", "archives", "clients", "invoices", "invoice_items", "invoice_payments"];
   }
   return [];
 }
@@ -182,9 +191,15 @@ async function pushPending(companyId: string): Promise<{ pushed: number; conflic
     group.push(item);
     groups.set(key, group);
   }
-  const latestGroups = [...groups.values()].sort((a, b) =>
-    (a[a.length - 1]?.created_at ?? "").localeCompare(b[b.length - 1]?.created_at ?? "")
-  );
+  const entityPriority: Record<string, number> = {
+    clients: 0, invoices: 1, invoice_items: 2, invoice_payments: 3
+  };
+  const latestGroups = [...groups.values()].sort((a, b) => {
+    const left = a[a.length - 1], right = b[b.length - 1];
+    const timeOrder = (left?.created_at ?? "").localeCompare(right?.created_at ?? "");
+    if (timeOrder !== 0) return timeOrder;
+    return (entityPriority[left?.entity ?? ""] ?? 4) - (entityPriority[right?.entity ?? ""] ?? 4);
+  });
 
   let pushed = 0;
   let conflicts = 0;
@@ -199,14 +214,27 @@ async function pushPending(companyId: string): Promise<{ pushed: number; conflic
     ));
     try {
       const payload = sanitizeSyncPayload(item.entity, asRecord(item.payload));
-      const { data, error } = await supabase.rpc("sync_apply_record", {
-        p_entity: item.entity,
-        p_record: payload
-      });
-      if (error) throw new Error(error.message);
-      const response = asRecord(data);
+      let responseData: unknown;
+      if (item.entity === "invoice_payments") {
+        const { data, error } = await supabase.rpc("sync_apply_invoice_payment", { p_record: payload });
+        if (error) throw new Error(error.message);
+        responseData = data;
+      } else {
+        const { data, error } = await supabase.rpc("sync_apply_record", {
+          p_entity: item.entity,
+          p_record: payload
+        });
+        if (error) throw new Error(error.message);
+        responseData = data;
+      }
+      const response = asRecord(responseData);
       const remote = asRecord(response.record);
-      if (response.applied === false && item.entity !== "wage_payments") {
+      if (item.entity === "invoice_payments") {
+        await applyRemoteRecord(companyId, "invoice_payments", remote, true);
+        if (response.cash_transaction) {
+          await applyRemoteRecord(companyId, "cash_transactions", asRecord(response.cash_transaction), true);
+        }
+      } else if (response.applied === false && item.entity !== "wage_payments") {
         conflicts += 1;
         await applyRemoteRecord(
           companyId,
