@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useToast } from "../composables/toast";
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from "vue";
 import {
   createCashTransaction,
@@ -13,6 +14,7 @@ import { useAuthStore } from "../stores/auth.store";
 import CashReceipt from "../components/cash/CashReceipt.vue";
 
 const auth = useAuthStore();
+const toast = useToast();
 const companyId = computed(() => auth.activeMembership?.company_id ?? "");
 const canCreate = computed(
   () =>
@@ -49,6 +51,7 @@ const loading = ref(false);
 const submitting = ref(false);
 const errorMessage = ref("");
 const successMessage = ref("");
+watch([errorMessage, successMessage], ([failure, success]) => { if (failure) toast.error(failure); if (success) toast.success(success); });
 const formOpen = ref(false);
 const openingFormOpen = ref(false);
 const editingId = ref<string | null>(null);
