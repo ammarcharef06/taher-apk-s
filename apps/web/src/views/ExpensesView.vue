@@ -1,14 +1,15 @@
 <script setup lang="ts">
+import { useToast } from "../composables/toast";
 import { computed,onMounted,reactive,ref,watch } from "vue";
 import { deleteExpense,listExpenses,saveExpense,type LocalExpense } from "@taher/db";
 import type { ExpenseInput,ExpensePaymentMethod } from "@taher/core";
 import { useAuthStore } from "../stores/auth.store";
-const auth=useAuthStore();const companyId=computed(()=>auth.activeMembership?.company_id??"");
+const auth=useAuthStore();const toast=useToast();const companyId=computed(()=>auth.activeMembership?.company_id??"");
 const canManage=computed(()=>auth.activeRole==="company_admin"||auth.activeRole==="manager");
 const canCreate=computed(()=>canManage.value||auth.activeRole==="data_entry");
 const canView=computed(()=>canManage.value||auth.activeRole==="accountant"||auth.activeRole==="data_entry");
 const rows=ref<LocalExpense[]>([]);const loading=ref(false);const submitting=ref(false);
-const error=ref("");const success=ref("");const open=ref(false);const editing=ref<string|null>(null);
+const error=ref("");const success=ref("");watch([error,success],([failure,ok])=>{if(failure)toast.error(failure);if(ok)toast.success(ok);});const open=ref(false);const editing=ref<string|null>(null);
 const search=ref("");const method=ref<ExpensePaymentMethod|"all">("all");const from=ref("");const to=ref("");
 const empty=():ExpenseInput=>({expense_date:new Date().toISOString().slice(0,10),expense_type:"مواد",supplier:null,invoice_number:null,amount_ht:0,tax_amount:0,payment_method:"cash",notes:null});
 const form=reactive<ExpenseInput>(empty());
