@@ -14,7 +14,7 @@ alter table public.invoice_payments
 revoke insert,update,delete on public.invoice_payments from authenticated;
 grant select on public.invoice_payments to authenticated;
 
-do $1
+do $$
   if not exists (
     select 1 from pg_constraint
     where conname='invoice_payments_company_cash_transaction_fk'
@@ -26,7 +26,7 @@ do $1
       references public.cash_transactions(company_id,id)
       on delete restrict;
   end if;
-end $;
+end $$;
 
 create unique index if not exists invoice_payments_company_cash_transaction_unique
   on public.invoice_payments(company_id,cash_transaction_id)
