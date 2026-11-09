@@ -1,13 +1,14 @@
 <script setup lang="ts">
+import { useToast } from "../composables/toast";
 import { computed,onMounted,onUnmounted,reactive,ref,watch } from "vue";
 import { deleteArchive,listArchives,saveArchive,saveArchiveFileLocal,setArchiveDelivered,type LocalArchive } from "@taher/db";
 import type { ArchiveInput } from "@taher/core";
 import { getArchiveDownloadUrl,uploadArchiveFile,syncPendingArchiveFiles } from "../services/archive-storage";
 import { useAuthStore } from "../stores/auth.store";
-const auth=useAuthStore();const companyId=computed(()=>auth.activeMembership?.company_id??"");
+const auth=useAuthStore();const toast=useToast();const companyId=computed(()=>auth.activeMembership?.company_id??"");
 const canManage=computed(()=>auth.activeRole==="company_admin"||auth.activeRole==="manager");
 const canAttach=computed(()=>canManage.value||auth.activeRole==="data_entry");
-const rows=ref<LocalArchive[]>([]);const loading=ref(false);const error=ref("");const success=ref("");
+const rows=ref<LocalArchive[]>([]);const loading=ref(false);const error=ref("");const success=ref("");watch([error,success],([failure,ok])=>{if(failure)toast.error(failure);if(ok)toast.success(ok);});
 const search=ref("");const delivered=ref<"all"|"yes"|"no">("all");const from=ref("");const to=ref("");
 const uploading=ref<string|null>(null);const formOpen=ref(false);const saving=ref(false);
 const form=reactive<ArchiveInput>({source_table:null,source_id:null,document_type:"وثيقة",counterparty:null,invoice_number:null,document_date:new Date().toISOString().slice(0,10),amount:0,cabinet:null,shelf:null,delivered_to_accountant:false,delivered_at:null,notes:null});
