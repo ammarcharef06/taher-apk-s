@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useAuthStore } from "../../stores/auth.store";
 import { useSyncStore, type SyncStatus } from "../../stores/sync.store";
@@ -73,6 +73,9 @@ async function loadDashboard(): Promise<void> {
 }
 
 watch(companyId, () => void loadDashboard(), { immediate: true });
+function handleDemoData() { void loadDashboard(); }
+onMounted(() => window.addEventListener("taher:demo-data-created", handleDemoData));
+onBeforeUnmount(() => window.removeEventListener("taher:demo-data-created", handleDemoData));
 </script>
 
 <template>
@@ -80,7 +83,7 @@ watch(companyId, () => void loadDashboard(), { immediate: true });
     <div class="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
       <div>
         <p class="text-sm text-slate-500">{{ today }}</p>
-        <h1 class="mt-2 text-2xl font-bold text-slate-900">{{ t("dashboard.title") }}</h1>
+        <h1 class="mt-2 text-3xl font-black tracking-tight text-[#0A192F]">{{ t("dashboard.title") }}</h1>
         <p class="mt-1 text-sm text-slate-500">{{ t("dashboard.welcome", { name: auth.profile?.display_name || t("common.unknown") }) }}</p>
       </div>
       <span class="inline-flex w-fit items-center gap-2 rounded-full px-3 py-2 text-xs font-semibold" :class="sync.status === 'online' ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600'">
@@ -90,12 +93,12 @@ watch(companyId, () => void loadDashboard(), { immediate: true });
     </div>
 
     <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-      <article v-for="item in indicators" :key="item.label" class="panel p-5">
+      <article v-for="item in indicators" :key="item.label" class="kpi-card p-5">
         <div class="flex items-center justify-between">
           <span class="text-sm font-medium text-slate-500">{{ item.label }}</span>
           <span class="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-50 text-lg text-brand-700">{{ item.icon }}</span>
         </div>
-        <p class="mt-5 break-words text-2xl font-bold text-slate-900">{{ loading ? "…" : item.value }}</p>
+        <p class="mt-5 break-words text-2xl font-black tracking-tight" :class="item.label === t('dashboard.monthlyExpenses') ? 'text-[#EF4444]' : item.label === t('dashboard.cashBalance') ? 'text-[#10B981]' : 'text-[#0A192F]'">{{ loading ? "…" : item.value }}</p>
       </article>
       <article v-if="!indicators.length" class="panel p-5 text-sm text-slate-500 sm:col-span-2 xl:col-span-4">{{ loading ? t("common.loading") : t("dashboard.noData") }}</article>
     </div>

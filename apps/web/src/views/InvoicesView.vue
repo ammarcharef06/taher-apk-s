@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from "vue";
+import { useToast } from "../composables/toast";
+import { computed, onMounted, reactive, ref, watch } from "vue";
 import { useAuthStore } from "../stores/auth.store";
 import {
   addClient, listClients, listInvoices, mintPortalUrl, recordInvoicePayment, saveInvoice,
@@ -7,6 +8,7 @@ import {
 } from "../services/invoicing.service";
 
 const auth = useAuthStore();
+const toast = useToast();
 const companyId = computed(() => auth.activeMembership?.company_id ?? "");
 const allowed = computed(() => ["company_admin", "manager"].includes(auth.activeRole ?? ""));
 const clients = ref<any[]>([]);
@@ -15,6 +17,7 @@ const loading = ref(false);
 const saving = ref(false);
 const error = ref("");
 const message = ref("");
+watch([error, message], ([failure, success]) => { if (failure) toast.error(failure); if (success) toast.success(success); });
 const open = ref(false);
 const newClient = ref(false);
 const portal = ref("");
@@ -266,7 +269,7 @@ onMounted(() => void load());
               <td class="p-4">{{ i.issue_date }}</td>
               <td class="p-4">{{ money(i.total, i.currency_code) }}</td>
               <td class="p-4">{{ money(i.paid_amount, i.currency_code) }}</td>
-              <td class="p-4">{{ i.status }}</td>
+              <td class="p-4"><span class="status-pill" :class="i.status === 'paid' ? 'status-positive' : i.status === 'cancelled' || i.status === 'overdue' ? 'status-negative' : 'status-pending'">{{ i.status }}</span></td>
               <td class="p-4"><button class="secondary-button" :disabled="!i.client_id" @click="share(i.client_id)">إنشاء رابط</button></td>
               <td class="p-4"><button v-if="allowed && i.status !== 'cancelled' && i.status !== 'draft' && i.paid_amount < i.total" class="secondary-button" @click="openPayment(i)">تسجيل دفعة</button><span v-else class="text-slate-400">—</span></td>
             </tr>

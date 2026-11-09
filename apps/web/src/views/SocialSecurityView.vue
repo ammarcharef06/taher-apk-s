@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useToast } from "../composables/toast";
 import { computed, onMounted, reactive, ref, watch } from "vue";
 import {
   createSocialSecurityDeclaration,
@@ -16,6 +17,7 @@ import { calculateSocialSecurityAmounts } from "@taher/core";
 import { useAuthStore } from "../stores/auth.store";
 
 const auth = useAuthStore();
+const toast = useToast();
 const companyId = computed(() => auth.activeMembership?.company_id ?? "");
 const canManage = computed(
   () => auth.activeRole === "company_admin" || auth.activeRole === "manager"
@@ -48,6 +50,7 @@ const loading = ref(false);
 const submitting = ref(false);
 const errorMessage = ref("");
 const successMessage = ref("");
+watch([errorMessage, successMessage], ([failure, success]) => { if (failure) toast.error(failure); if (success) toast.success(success); });
 const formOpen = ref(false);
 const editingId = ref<string | null>(null);
 
@@ -286,7 +289,7 @@ onMounted(() => {
               <td class="px-5 py-4">
                 <span class="rounded-full px-3 py-1 text-xs font-semibold"
                   :class="row.payment_status === 'paid' ? 'bg-emerald-50 text-emerald-700' : row.payment_status === 'partial' ? 'bg-amber-50 text-amber-700' : 'bg-red-50 text-red-700'">
-                  {{ statusLabel(row.payment_status) }}
+                  <span class="status-pill" :class="row.payment_status === 'paid' ? 'status-positive' : row.payment_status === 'unpaid' ? 'status-negative' : 'status-pending'">{{ statusLabel(row.payment_status) }}</span>
                 </span>
               </td>
               <td class="px-5 py-4 text-slate-500">{{ row.payment_date || "—" }}</td>
