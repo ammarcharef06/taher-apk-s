@@ -91,8 +91,12 @@ export async function createLocalInvoice(companyId: string, input: CreateInvoice
   const normalized=input.items.map(item=>{
     const description=item.description.trim(), quantity=Number(item.quantity), unitPrice=Number(item.unit_price), rate=Number(item.tva_rate);
     if(!description||description.length>500||!Number.isFinite(quantity)||quantity<=0||!Number.isFinite(unitPrice)||unitPrice<0||!Number.isFinite(rate)||rate<0||rate>100) throw new Error("تحقق من وصف وكمية وسعر ونسبة TVA لكل بند.");
-    const lineSubtotal=roundMoney(quantity*unitPrice);
-    return {description,quantity,unit_price:roundMoney(unitPrice),tva_rate:rate,line_subtotal:lineSubtotal,line_tax:roundMoney(quantity*unitPrice*rate/100)};
+    const normalizedQuantity=Math.round(quantity*1000)/1000;
+    const normalizedPrice=roundMoney(unitPrice);
+    const normalizedRate=Math.round(rate*100)/100;
+    if(normalizedQuantity<=0) throw new Error("كمية البند يجب أن تكون أكبر من صفر بعد التقريب.");
+    const lineSubtotal=roundMoney(normalizedQuantity*normalizedPrice);
+    return {description,quantity:normalizedQuantity,unit_price:normalizedPrice,tva_rate:normalizedRate,line_subtotal:lineSubtotal,line_tax:roundMoney(normalizedQuantity*normalizedPrice*normalizedRate/100)};
   });
   const timestamp=nowIso(), invoiceId=newId();
   const subtotal=roundMoney(normalized.reduce((sum,item)=>sum+item.line_subtotal,0));
