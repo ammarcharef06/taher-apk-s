@@ -3,6 +3,7 @@ import { computed } from "vue";
 import { useRoute } from "vue-router";
 import AppHeader from "./components/layout/AppHeader.vue";
 import AppSidebar from "./components/layout/AppSidebar.vue";
+import ToastHost from "./components/ui/ToastHost.vue";
 
 const route = useRoute();
 const isAuthPage = computed(() => route.meta.guestOnly === true || route.meta.publicPortal === true);
@@ -10,6 +11,7 @@ const isAuthPage = computed(() => route.meta.guestOnly === true || route.meta.pu
 
 <template>
   <div class="min-h-screen bg-slate-50 text-slate-800">
+    <ToastHost />
     <template v-if="isAuthPage">
       <RouterView />
     </template>
