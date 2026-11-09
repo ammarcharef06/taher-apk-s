@@ -253,7 +253,10 @@ begin
   select * into v_existing from public.invoice_payments where id=v_payment_id;
   if found then
     if v_existing.company_id<>v_company or v_existing.invoice_id<>v_invoice or
-       v_existing.amount<>v_amount or v_existing.payment_method<>v_method or
+       v_existing.payment_date<>v_date or v_existing.amount<>v_amount or
+       v_existing.payment_method<>v_method or
+       v_existing.reference is distinct from nullif(trim(p_record->>'reference'),'') or
+       v_existing.notes is distinct from nullif(trim(p_record->>'notes'),'') or
        v_existing.cash_transaction_id is distinct from v_cash_id then
       raise exception 'Payment ID already exists with different data.' using errcode='23505';
     end if;
