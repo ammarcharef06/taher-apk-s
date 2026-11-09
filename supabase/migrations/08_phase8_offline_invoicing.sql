@@ -27,7 +27,11 @@ begin
       references public.cash_transactions(company_id,id)
       on delete restrict;
   end if;
-end $$;
+end $;
+
+create unique index if not exists invoice_payments_company_cash_transaction_unique
+  on public.invoice_payments(company_id,cash_transaction_id)
+  where cash_transaction_id is not null;
 
 create index if not exists clients_company_sync_idx on public.clients(company_id,updated_at,id);
 create index if not exists invoices_company_sync_idx on public.invoices(company_id,updated_at,id);
