@@ -222,7 +222,7 @@ begin
   if v_company is null or v_invoice is null or v_payment_id is null or v_amount is null or v_amount<=0 or v_date is null then
     raise exception 'Payment identity, date and positive amount are required.' using errcode='22023';
   end if;
-  if v_method not in ('cash','bank') then raise exception 'Unsupported invoice payment method.' using errcode='22023'; end if;
+  if v_method is null or v_method not in ('cash','bank') then raise exception 'Unsupported invoice payment method.' using errcode='22023'; end if;
   if (v_method='cash' and v_cash_id is null) or (v_method='bank' and v_cash_id is not null) then
     raise exception 'Cash transaction linkage does not match the payment method.' using errcode='22023';
   end if;
@@ -251,16 +251,18 @@ begin
   for update of i;
   if not found then raise exception 'Invoice is not available for payment.' using errcode='23503'; end if;
 
-  insert into public.invoice_payments(id,company_id,invoice_id,payment_date,amount,payment_method,reference,notes,created_by,created_at,cash_transaction_id)
-  values(v_payment_id,v_company,v_invoice,v_date,v_amount,v_method,nullif(trim(p_record->>'reference'),''),nullif(trim(p_record->>'notes'),''),auth.uid(),coalesce(nullif(p_record->>'created_at','')::timestamptz,now()),v_cash_id)
-  returning * into v_payment;
-
+  -- Insert the linked cash movement first to satisfy the payment's composite FK.
+  -- Both inserts share this RPC transaction, so a rejected payment rolls the cash row back.
   if v_method='cash' then
     insert into public.cash_transactions(id,company_id,transaction_date,transaction_type,description,beneficiary,amount,document_number,notes,created_by,created_at,updated_at,deleted_at)
     values(v_cash_id,v_company,v_date,'income','تحصيل فاتورة: '||v_number,v_client_name,v_amount,
       coalesce(nullif(trim(p_record->>'reference'),''),v_number),nullif(trim(p_record->>'notes'),''),auth.uid(),now(),now(),null)
     returning * into v_cash;
   end if;
+
+  insert into public.invoice_payments(id,company_id,invoice_id,payment_date,amount,payment_method,reference,notes,created_by,created_at,cash_transaction_id)
+  values(v_payment_id,v_company,v_invoice,v_date,v_amount,v_method,nullif(trim(p_record->>'reference'),''),nullif(trim(p_record->>'notes'),''),auth.uid(),coalesce(nullif(p_record->>'created_at','')::timestamptz,now()),v_cash_id)
+  returning * into v_payment;
 
   return jsonb_build_object('applied',true,'record',to_jsonb(v_payment),
     'cash_transaction',case when v_method='cash' then to_jsonb(v_cash) else null end,'duplicate',false);
