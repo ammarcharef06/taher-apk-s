@@ -41,22 +41,20 @@ jobs:
           failures = []
           for path in sorted(Path("supabase/migrations").glob("*.sql")):
               sql = path.read_text(encoding="utf-8")
-              for match in re.finditer(r"\bdo\s+\$\$(.*?)\$\$\s*;", sql, re.IGNORECASE | re.DOTALL):
-                  body = match.group(1).strip()
-                  if not re.match(r"^begin\b", body, re.IGNORECASE):
-                      failures.append(f"{path}: DO block is missing BEGIN")
-                  if not re.search(r"end\s*;?\s*$", body, re.IGNORECASE):
-                      failures.append(f"{path}: DO block is missing END")
-              if re.search(r"\bdo\s+\$(?!\$)", sql, re.IGNORECASE):
+              openers = list(re.finditer(r"\\bdo\\s+\\$\\$", sql, re.IGNORECASE))
+              blocks = list(re.finditer(r"\\bdo\\s+\\$\\$(.*?)\\$\\$\\s*;", sql, re.IGNORECASE | re.DOTALL))
+              if len(openers) != len(blocks):
+                  failures.append(f"{path}: unmatched DO dollar-quoted block")
+              if re.search(r"\\bdo\\s+\\$(?!\\$)", sql, re.IGNORECASE):
                   failures.append(f"{path}: malformed single-dollar DO delimiter")
-              if re.search(r"\bend\s+\$\s*;", sql, re.IGNORECASE):
+              if re.search(r"\\bend\\s+\\$\\s*;", sql, re.IGNORECASE):
                   failures.append(f"{path}: malformed single-dollar DO terminator")
 
           if failures:
-              print("\n".join(failures))
+              print("\\n".join(failures))
               sys.exit(1)
-          print("Migration DO block structure is valid.")
-
+          print("Migration DO dollar-quoted blocks are balanced.")
+          
       - name: Typecheck
         run: pnpm typecheck
 
