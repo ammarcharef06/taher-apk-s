@@ -52,3 +52,11 @@ pnpm dev
 ```
 
 Test at minimum: first full pull, offline create/update/delete (soft delete), reconnect push, second-device pull, concurrent edits in both directions, interrupted/retried push, role-restricted sync, and offline archive attachment upload.
+
+## Phase 8 invoice entities
+
+Migration 08 (applied after migration 07) extends the allow-listed sync endpoint for clients, invoices and invoice_items. Invoice items are append-only sync events because the server calculates their generated line totals and recalculates the parent invoice after each accepted insert. Invoice payments are also append-only, but use the dedicated sync_apply_invoice_payment RPC rather than sync_apply_record.
+
+Dexie version 5 stores invoice headers, item rows and payments locally. Existing clients storage is reused and is now part of the sync table map. Push ordering is clients → invoices → invoice_items → invoice_payments. A cash invoice payment is committed locally with a linked cash-box income movement; on reconnect the dedicated RPC inserts both rows atomically and idempotently. Bank payments do not affect the physical cash-box balance.
+
+Apply migrations 07 and 08 to Supabase before deploying a build that includes Phase 8 invoice synchronization. See docs/PHASE-8-CLIENT-PORTAL.md for the invoice/payment acceptance checks.
