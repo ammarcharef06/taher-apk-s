@@ -3,6 +3,7 @@ import {
   chooseSyncWinner,
   sanitizeSyncPayload,
   syncCursorStart,
+  allowedSyncPullEntities,
   type SyncEntity
 } from "@taher/core";
 import {
@@ -61,23 +62,6 @@ function asRecord(value: unknown): Record<string, unknown> {
     throw new Error("بيانات المزامنة غير صالحة.");
   }
   return value as Record<string, unknown>;
-}
-
-function allowedPullEntities(role: string): SyncEntity[] {
-  if (role === "company_admin" || role === "manager" || role === "super_admin") {
-    return Object.keys(TABLES) as SyncEntity[];
-  }
-  if (role === "accountant") {
-    return [
-      "workers", "cash_transactions", "wages", "wage_payments", "advances",
-      "social_security_declarations", "expenses", "archives",
-      "clients", "invoices", "invoice_items", "invoice_payments"
-    ];
-  }
-  if (role === "data_entry") {
-    return ["workers", "cash_transactions", "advances", "expenses", "archives", "clients", "invoices", "invoice_items", "invoice_payments"];
-  }
-  return [];
 }
 
 async function recordLocalConflict(
@@ -356,7 +340,7 @@ export async function runCompanySync(companyId: string, role: string): Promise<S
   const pushed = await pushPending(companyId);
   const watermark = new Date().toISOString();
   let pulled = 0;
-  for (const entity of allowedPullEntities(role)) {
+  for (const entity of allowedSyncPullEntities(role)) {
     pulled += await pullEntity(companyId, entity, watermark);
   }
 
