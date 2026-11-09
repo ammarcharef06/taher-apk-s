@@ -269,7 +269,7 @@ onMounted(() => void load());
               <td class="p-4">{{ i.issue_date }}</td>
               <td class="p-4">{{ money(i.total, i.currency_code) }}</td>
               <td class="p-4">{{ money(i.paid_amount, i.currency_code) }}</td>
-              <td class="p-4">{{ i.status }}</td>
+              <td class="p-4"><span class="status-pill" :class="i.status === 'paid' ? 'status-positive' : i.status === 'cancelled' || i.status === 'overdue' ? 'status-negative' : 'status-pending'">{{ i.status }}</span></td>
               <td class="p-4"><button class="secondary-button" :disabled="!i.client_id" @click="share(i.client_id)">إنشاء رابط</button></td>
               <td class="p-4"><button v-if="allowed && i.status !== 'cancelled' && i.status !== 'draft' && i.paid_amount < i.total" class="secondary-button" @click="openPayment(i)">تسجيل دفعة</button><span v-else class="text-slate-400">—</span></td>
             </tr>
