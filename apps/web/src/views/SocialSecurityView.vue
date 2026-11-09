@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useToast } from "../composables/toast";
 import { computed, onMounted, reactive, ref, watch } from "vue";
 import {
   createSocialSecurityDeclaration,
@@ -16,6 +17,7 @@ import { calculateSocialSecurityAmounts } from "@taher/core";
 import { useAuthStore } from "../stores/auth.store";
 
 const auth = useAuthStore();
+const toast = useToast();
 const companyId = computed(() => auth.activeMembership?.company_id ?? "");
 const canManage = computed(
   () => auth.activeRole === "company_admin" || auth.activeRole === "manager"
@@ -48,6 +50,7 @@ const loading = ref(false);
 const submitting = ref(false);
 const errorMessage = ref("");
 const successMessage = ref("");
+watch([errorMessage, successMessage], ([failure, success]) => { if (failure) toast.error(failure); if (success) toast.success(success); });
 const formOpen = ref(false);
 const editingId = ref<string | null>(null);
 
