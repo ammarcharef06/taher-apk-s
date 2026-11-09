@@ -82,7 +82,7 @@ async function createClient() {
   saving.value = true;
   error.value = "";
   try {
-    const c = await addClient(companyId.value, cform, auth.user?.id ?? null);
+    const c = await addClient(companyId.value, cform);
     await load();
     form.clientId = c.id;
     newClient.value = false;
