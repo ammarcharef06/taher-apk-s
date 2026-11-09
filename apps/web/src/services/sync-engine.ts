@@ -117,7 +117,7 @@ async function applyRemoteRecord(
     throw new Error("تجاهل سجل وارد لا يطابق الشركة الحالية.");
   }
   const table = TABLES[entity];
-  return localDb.transaction("rw", [table, localDb.syncQueue, localDb.correctionLogs], async () => {
+  return localDb.transaction("rw", [table, localDb.syncQueue, localDb.correctionLogs, localDb.invoicePayments], async () => {
     let local = await table.get(recordId);
     // Financial inserts may create their archive row server-side before the local
     // archive queue item arrives. Match that row by its natural source key.
@@ -163,8 +163,27 @@ async function applyRemoteRecord(
       file_size: remote.file_size ?? localArchive.file_size,
       storage_path: remote.storage_path ?? localArchive.storage_path
     } : {};
+    let acceptedRemote = remote;
+    if (entity === "invoices") {
+      // Keep unpushed local payments visible if a pull races a failed/interrupted
+      // payment push. Once the payment RPC is accepted, its row is marked synced.
+      const pendingPayments = await localDb.invoicePayments
+        .where("[company_id+invoice_id]").equals([companyId, recordId])
+        .and((payment) => payment._synced === 0)
+        .toArray();
+      if (pendingPayments.length > 0) {
+        const paid = Number(remote.paid_amount ?? 0) +
+          pendingPayments.reduce((sum, payment) => sum + Number(payment.amount || 0), 0);
+        const total = Number(remote.total ?? 0);
+        acceptedRemote = {
+          ...remote,
+          paid_amount: Math.round((paid + Number.EPSILON) * 100) / 100,
+          status: total > 0 && paid >= total ? "paid" : paid > 0 ? "partial" : remote.status
+        };
+      }
+    }
     await table.put({
-      ...remote,
+      ...acceptedRemote,
       ...localOnly,
       _synced: 1,
       _updated_at: updatedAt,
