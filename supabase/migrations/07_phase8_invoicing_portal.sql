@@ -223,7 +223,7 @@ begin
  'items',(select coalesce(jsonb_agg(jsonb_build_object('description',x.description,'quantity',x.quantity,'unit_price',x.unit_price,'tva_rate',x.tva_rate,'line_subtotal',x.line_subtotal,'line_tax',x.line_tax)),'[]'::jsonb) from public.invoice_items x where x.company_id=i.company_id and x.invoice_id=i.id),
  'payments',(select coalesce(jsonb_agg(jsonb_build_object('payment_date',p.payment_date,'amount',p.amount,'payment_method',p.payment_method,'reference',p.reference)),'[]'::jsonb) from public.invoice_payments p where p.company_id=i.company_id and p.invoice_id=i.id),
  'signed',exists(select 1 from public.client_signatures s where s.company_id=i.company_id and s.invoice_id=i.id and s.deleted_at is null)
- ) order by i.issue_date desc) from public.invoices i where i.company_id=v_company and i.client_id=v_client and i.deleted_at is null and i.status<>'draft'),'[]'::jsonb))
+ ) order by i.issue_date desc) from public.invoices i where i.company_id=v_company and i.client_id=v_client and i.deleted_at is null and i.status not in ('draft','cancelled')),'[]'::jsonb))
  into v_out from public.clients c join public.companies co on co.id=c.company_id where c.id=v_client and c.company_id=v_company;
  return v_out;
 end $$;
