@@ -57,3 +57,25 @@ export const SYNC_ENTITIES = [
 ] as const;
 
 export type SyncEntity = (typeof SYNC_ENTITIES)[number];
+
+
+/** Read-only pull allow-list. Write permissions remain enforced by the server RPC/RLS. */
+export function allowedSyncPullEntities(role: string): SyncEntity[] {
+  if (role === "company_admin" || role === "manager" || role === "super_admin") {
+    return [...SYNC_ENTITIES];
+  }
+  if (role === "accountant") {
+    return [
+      "workers", "cash_transactions", "wages", "wage_payments", "advances",
+      "social_security_declarations", "expenses", "archives",
+      "clients", "invoices", "invoice_items", "invoice_payments"
+    ];
+  }
+  if (role === "data_entry") {
+    return [
+      "workers", "cash_transactions", "advances", "expenses", "archives",
+      "clients", "invoices", "invoice_items", "invoice_payments"
+    ];
+  }
+  return [];
+}
