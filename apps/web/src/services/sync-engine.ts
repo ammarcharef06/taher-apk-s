@@ -117,7 +117,7 @@ async function applyRemoteRecord(
     throw new Error("تجاهل سجل وارد لا يطابق الشركة الحالية.");
   }
   const table = TABLES[entity];
-  return localDb.transaction("rw", [table, localDb.syncQueue, localDb.correctionLogs, localDb.invoicePayments], async () => {
+  return localDb.transaction("rw", [table, localDb.syncQueue, localDb.correctionLogs, localDb.invoicePayments, localDb.invoiceItems], async () => {
     let local = await table.get(recordId);
     // Financial inserts may create their archive row server-side before the local
     // archive queue item arrives. Match that row by its natural source key.
@@ -165,6 +165,20 @@ async function applyRemoteRecord(
     } : {};
     let acceptedRemote = remote;
     if (entity === "invoices") {
+      // Keep locally calculated totals visible while one or more item inserts
+      // remain queued. The server recalculates them after each accepted item.
+      const pendingItems = await localDb.invoiceItems
+        .where("[company_id+invoice_id]").equals([companyId, recordId])
+        .and((item) => item._synced === 0)
+        .toArray();
+      if (pendingItems.length > 0 && local) {
+        acceptedRemote = {
+          ...remote,
+          subtotal: local.subtotal,
+          tax_total: local.tax_total,
+          total: local.total
+        };
+      }
       // Keep unpushed local payments visible if a pull races a failed/interrupted
       // payment push. Once the payment RPC is accepted, its row is marked synced.
       const pendingPayments = await localDb.invoicePayments
@@ -172,13 +186,13 @@ async function applyRemoteRecord(
         .and((payment) => payment._synced === 0)
         .toArray();
       if (pendingPayments.length > 0) {
-        const paid = Number(remote.paid_amount ?? 0) +
+        const paid = Number(acceptedRemote.paid_amount ?? remote.paid_amount ?? 0) +
           pendingPayments.reduce((sum, payment) => sum + Number(payment.amount || 0), 0);
-        const total = Number(remote.total ?? 0);
+        const total = Number(acceptedRemote.total ?? remote.total ?? 0);
         acceptedRemote = {
-          ...remote,
+          ...acceptedRemote,
           paid_amount: Math.round((paid + Number.EPSILON) * 100) / 100,
-          status: total > 0 && paid >= total ? "paid" : paid > 0 ? "partial" : remote.status
+          status: total > 0 && paid >= total ? "paid" : paid > 0 ? "partial" : acceptedRemote.status
         };
       }
     }
