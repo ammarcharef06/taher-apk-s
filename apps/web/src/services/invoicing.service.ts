@@ -1,8 +1,54 @@
+import {
+  createLocalClient,
+  createLocalInvoice,
+  listLocalClients,
+  listLocalInvoices,
+  recordLocalInvoicePayment,
+  type CreateInvoiceInput,
+  type RecordInvoicePaymentInput
+} from "@taher/db";
 import { supabase } from "../stores/auth.store";
-function client(){if(!supabase)throw new Error("Supabase غير مهيأ.");return supabase;}
-export type InvoiceLine={description:string;quantity:number;unit_price:number;tva_rate:number};
-export async function listClients(companyId:string){const {data,error}=await client().from("clients").select("id,name,email,phone,user_id").eq("company_id",companyId).is("deleted_at",null).order("name");if(error)throw error;return data??[];}
-export async function addClient(companyId:string,input:{name:string;email:string;phone:string}){const {data,error}=await client().from("clients").insert({company_id:companyId,name:input.name.trim(),email:input.email.trim().toLowerCase()||null,phone:input.phone.trim()||null}).select("id,name,email,phone,user_id").single();if(error)throw error;return data;}
-export async function listInvoices(companyId:string){const {data,error}=await client().from("invoices").select("id,client_id,invoice_number,issue_date,due_date,status,subtotal,tax_total,total,paid_amount,currency_code,clients(name,email)").eq("company_id",companyId).is("deleted_at",null).order("issue_date",{ascending:false});if(error)throw error;return data??[];}
-export async function saveInvoice(p:{companyId:string;clientId:string;number:string;issueDate:string;dueDate:string|null;currency:string;notes:string;items:InvoiceLine[]}){const {data,error}=await client().rpc("create_invoice",{p_company_id:p.companyId,p_client_id:p.clientId,p_invoice_number:p.number,p_issue_date:p.issueDate,p_due_date:p.dueDate,p_currency_code:p.currency,p_notes:p.notes,p_items:p.items});if(error)throw error;return data as string;}
-export async function mintPortalUrl(companyId:string,clientId:string){const {data,error}=await client().rpc("issue_client_portal_token",{p_company_id:companyId,p_client_id:clientId,p_expires_at:null});if(error)throw error;return window.location.origin+import.meta.env.BASE_URL.replace(/\/$/,"")+"/portal/"+encodeURIComponent(data as string);}
+
+function client() {
+  if (!supabase) throw new Error("Supabase غير مهيأ.");
+  return supabase;
+}
+export type InvoiceLine = { description: string; quantity: number; unit_price: number; tva_rate: number };
+export async function listClients(companyId: string) {
+  return listLocalClients(companyId);
+}
+export async function addClient(companyId: string, input: { name: string; email: string; phone: string }) {
+  return createLocalClient(companyId, input);
+}
+export async function listInvoices(companyId: string) {
+  return listLocalInvoices(companyId);
+}
+export async function saveInvoice(p: {
+  companyId: string; clientId: string; number: string; issueDate: string;
+  dueDate: string | null; currency: string; notes: string; items: InvoiceLine[];
+}) {
+  const input: CreateInvoiceInput = {
+    client_id: p.clientId,
+    invoice_number: p.number,
+    issue_date: p.issueDate,
+    due_date: p.dueDate,
+    currency_code: p.currency,
+    notes: p.notes,
+    items: p.items
+  };
+  return createLocalInvoice(p.companyId, input, null);
+}
+export async function recordInvoicePayment(p: {
+  companyId: string; invoiceId: string; payment: RecordInvoicePaymentInput;
+}) {
+  return recordLocalInvoicePayment(p.companyId, p.invoiceId, p.payment, null);
+}
+export async function mintPortalUrl(companyId: string, clientId: string) {
+  const { data, error } = await client().rpc("issue_client_portal_token", {
+    p_company_id: companyId,
+    p_client_id: clientId,
+    p_expires_at: null
+  });
+  if (error) throw error;
+  return window.location.origin + import.meta.env.BASE_URL.replace(/\/$/, "") + "/portal/" + encodeURIComponent(data as string);
+}
