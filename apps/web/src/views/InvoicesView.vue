@@ -62,7 +62,8 @@ async function save() {
     await saveInvoice({
       companyId: companyId.value, clientId: form.clientId, number: form.number,
       issueDate: form.issueDate, dueDate: form.dueDate || null,
-      currency: auth.activeCompany?.currency_code || "DZD", notes: form.notes, items: form.items
+      currency: auth.activeCompany?.currency_code || "DZD", notes: form.notes, items: form.items,
+      createdBy: auth.user?.id ?? null
     });
     open.value = false;
     message.value = "تم حفظ الفاتورة والعميل محلياً؛ ستتم مزامنتهما عند عودة الاتصال.";
@@ -81,7 +82,7 @@ async function createClient() {
   saving.value = true;
   error.value = "";
   try {
-    const c = await addClient(companyId.value, cform);
+    const c = await addClient(companyId.value, cform, auth.user?.id ?? null);
     await load();
     form.clientId = c.id;
     newClient.value = false;
@@ -113,6 +114,7 @@ async function recordPayment() {
     const result = await recordInvoicePayment({
       companyId: companyId.value,
       invoiceId: invoice.id,
+      createdBy: auth.user?.id ?? null,
       payment: {
         payment_date: paymentForm.paymentDate,
         amount: Number(paymentForm.amount),
