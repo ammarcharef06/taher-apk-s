@@ -20,7 +20,8 @@ begin
   end if;
 end $$;
 
-do $$
+do $
+begin
   if not exists (select 1 from pg_constraint where conname = 'archives_file_metadata_check') then
     alter table public.archives
       add constraint archives_file_metadata_check
