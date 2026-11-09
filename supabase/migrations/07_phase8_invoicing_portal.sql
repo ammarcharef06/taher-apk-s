@@ -69,7 +69,8 @@ create index if not exists invoice_payments_company_invoice_date_idx on public.i
 alter table public.invoices enable row level security;
 alter table public.invoice_items enable row level security;
 alter table public.invoice_payments enable row level security;
-revoke insert,update,delete on public.invoices,public.invoice_items from authenticated;\ngrant select on public.invoices,public.invoice_items to authenticated;
+revoke insert,update,delete on public.invoices,public.invoice_items from authenticated;
+grant select on public.invoices,public.invoice_items to authenticated;
 grant select,insert on public.invoice_payments to authenticated;
 revoke update,delete on public.invoice_payments from authenticated;
 
@@ -234,7 +235,8 @@ begin
  select client_id,company_id into v_client,v_company from public.client_access_tokens where token_hash=encode(extensions.digest(coalesce(p_token,''),'sha256'),'hex') and revoked_at is null and deleted_at is null and (expires_at is null or expires_at>now());
  if v_client is null then raise exception 'Invalid or expired portal link.' using errcode='28000'; end if;
  if length(trim(coalesce(p_signer_name,'')))<2 or length(coalesce(p_signature_data_url,''))>2000000 or p_signature_data_url !~ '^data:image/png;base64,' then raise exception 'Invalid signature.' using errcode='22023'; end if;
- if not exists(select 1 from public.invoices where id=p_invoice_id and company_id=v_company and client_id=v_client and status not in ('draft','cancelled')) then raise exception 'Invoice not available for signing.' using errcode='42501'; end if;\n if exists(select 1 from public.client_signatures where company_id=v_company and client_id=v_client and invoice_id=p_invoice_id and deleted_at is null) then raise exception 'Invoice has already been signed.' using errcode='23505'; end if;
+ if not exists(select 1 from public.invoices where id=p_invoice_id and company_id=v_company and client_id=v_client and status not in ('draft','cancelled')) then raise exception 'Invoice not available for signing.' using errcode='42501'; end if;
+ if exists(select 1 from public.client_signatures where company_id=v_company and client_id=v_client and invoice_id=p_invoice_id and deleted_at is null) then raise exception 'Invoice has already been signed.' using errcode='23505'; end if;
  insert into public.client_signatures(company_id,client_id,invoice_id,signer_name,signature_data_url) values(v_company,v_client,p_invoice_id,trim(p_signer_name),p_signature_data_url) returning id into v_id;
  return v_id;
 end $$;
