@@ -1,7 +1,7 @@
 import { computed, ref } from "vue";
 import { defineStore } from "pinia";
 import { createClient, type Session, type SupabaseClient, type User } from "@supabase/supabase-js";
-import { localDb } from "@taher/db";
+import { clearLocalCompanyData, localDb } from "@taher/db";
 
 export type AppRole =
   | "super_admin"
@@ -378,10 +378,23 @@ export const useAuthStore = defineStore("auth", () => {
   async function signOut(): Promise<void> {
     const client = requireSupabase();
     loading.value = true;
+    const companyId = activeCompany.value?.id ?? null;
 
     try {
       const { error } = await client.auth.signOut();
       if (error) throw error;
+
+      // Never discard unsynchronized work. Keep it partitioned by company until
+      // a later authenticated session can safely resume synchronization.
+      if (companyId) {
+        const pendingChanges = await localDb.syncQueue
+          .where("company_id")
+          .equals(companyId)
+          .count();
+        if (pendingChanges === 0) {
+          await clearLocalCompanyData(companyId);
+        }
+      }
 
       user.value = null;
       session.value = null;
