@@ -127,3 +127,81 @@ The repository now includes a Capacitor Android wrapper, a Tauri 2 Windows wrapp
 ## Phase 8 — Invoicing and Client Portal
 
 See [docs/PHASE-8-CLIENT-PORTAL.md](docs/PHASE-8-CLIENT-PORTAL.md) for migration order, offline invoice and payment synchronization, cash-box linkage, bearer-link handling, RLS boundaries and acceptance checks. Apply migrations 07 and 08 after testing them in staging. Cash payments create one linked cash-box income movement; bank payments do not change the physical cash balance. Token links are private credentials; authenticated client accounts are required for private archive downloads.
+
+
+---
+
+## 🧰 التثبيت والتشغيل المحلي (دليل سريع)
+
+### المتطلبات
+
+- Node.js **20.19 أو أحدث**.
+- pnpm **10 أو أحدث** (المشروع يحدد pnpm 10.4.1 في packageManager).
+- حساب ومشروع Supabase عند تشغيل وظائف المصادقة والبيانات السحابية.
+
+تحقق من الإصدارات:
+
+```bash
+node --version
+corepack pnpm --version
+```
+
+إذا لم يكن pnpm متاحاً، فعّل Corepack ثم استخدم إصدار المشروع:
+
+```bash
+corepack enable
+corepack prepare pnpm@10.4.1 --activate
+```
+
+### 1. تنزيل المشروع وتثبيت الاعتماديات
+
+```bash
+git clone https://github.com/ammarcharef06/taher-apk-s.git
+cd taher-apk-s
+pnpm install
+```
+
+نفّذ pnpm install من جذر المستودع، وليس من مجلد apps/web، لأن المشروع Monorepo ويستخدم Workspaces.
+
+### 2. إعداد متغيرات Supabase
+
+انسخ ملف المثال:
+
+**Linux / macOS**
+```bash
+cp apps/web/.env.example apps/web/.env.local
+```
+
+**Windows PowerShell**
+```powershell
+Copy-Item apps/web/.env.example apps/web/.env.local
+```
+
+افتح apps/web/.env.local وضع رابط مشروع Supabase ومفتاحه العام:
+
+- VITE_SUPABASE_URL
+- VITE_SUPABASE_ANON_KEY
+
+استخدم مفتاح anon / publishable فقط في تطبيق الويب. **لا تضع مفتاح service_role في أي متغير يبدأ بـ VITE_ أو في ملفات الواجهة.**
+
+### 3. تشغيل التطبيق
+
+```bash
+pnpm dev
+```
+
+افتح العنوان الذي يعرضه Vite في الطرفية (عادةً http://localhost:5173).
+
+### 4. التحقق قبل التسليم
+
+```bash
+pnpm typecheck
+pnpm test
+pnpm build
+```
+
+### 5. قاعدة البيانات
+
+ملفات SQL الموجودة في supabase/migrations/ يجب تطبيقها بالترتيب الرقمي على مشروع Supabase المقصود. قبل تطبيقها على قاعدة بيانات قائمة، افحص حالة الترحيلات وسجل supabase_migrations.schema_migrations وخذ نسخة احتياطية. لا تعِد تشغيل Migration مطبقة يدوياً، ولا تستخدم db push على الإنتاج قبل مراجعة التغييرات المعلقة.
+
+> ملف .env.local محلي ولا يُرفع إلى Git. ملف apps/web/.env.example يحتوي أسماء المتغيرات المطلوبة فقط ولا يحتوي أسراراً.
