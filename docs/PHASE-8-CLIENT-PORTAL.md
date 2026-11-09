@@ -14,7 +14,7 @@ Payment entry is offline-first. The local transaction stores the invoice payment
 
 On reconnect, invoice payments are sent through public.sync_apply_invoice_payment(jsonb). This SECURITY DEFINER RPC is restricted to company Admin/Manager roles and inserts the cash movement and payment in one PostgreSQL transaction. The payment stores cash_transaction_id; retrying the same payment ID returns the existing payment and linked movement instead of creating duplicates. If either insert fails, both are rolled back. The cash movement also participates in the existing financial archive trigger.
 
-Do not insert invoice payments directly through the generic sync_apply_record RPC. Payments are append-only and must use the dedicated RPC to preserve the cash-linkage invariant.
+Direct authenticated INSERT/UPDATE/DELETE privileges on invoice_payments are revoked by migration 08. Do not insert invoice payments directly through the table or the generic sync_apply_record RPC. Payments are append-only and must use the dedicated RPC to preserve the cash-linkage invariant.
 
 ## Sync entities
 
