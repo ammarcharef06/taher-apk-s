@@ -17,15 +17,15 @@ export type InvoiceLine = { description: string; quantity: number; unit_price: n
 export async function listClients(companyId: string) {
   return listLocalClients(companyId);
 }
-export async function addClient(companyId: string, input: { name: string; email: string; phone: string }) {
-  return createLocalClient(companyId, input);
+export async function addClient(companyId: string, input: { name: string; email: string; phone: string }, createdBy: string | null) {
+  return createLocalClient(companyId, input, createdBy);
 }
 export async function listInvoices(companyId: string) {
   return listLocalInvoices(companyId);
 }
 export async function saveInvoice(p: {
   companyId: string; clientId: string; number: string; issueDate: string;
-  dueDate: string | null; currency: string; notes: string; items: InvoiceLine[];
+  dueDate: string | null; currency: string; notes: string; items: InvoiceLine[]; createdBy: string | null;
 }) {
   const input: CreateInvoiceInput = {
     client_id: p.clientId,
@@ -36,12 +36,12 @@ export async function saveInvoice(p: {
     notes: p.notes,
     items: p.items
   };
-  return createLocalInvoice(p.companyId, input, null);
+  return createLocalInvoice(p.companyId, input, p.createdBy);
 }
 export async function recordInvoicePayment(p: {
-  companyId: string; invoiceId: string; payment: RecordInvoicePaymentInput;
+  companyId: string; invoiceId: string; payment: RecordInvoicePaymentInput; createdBy: string | null;
 }) {
-  return recordLocalInvoicePayment(p.companyId, p.invoiceId, p.payment, null);
+  return recordLocalInvoicePayment(p.companyId, p.invoiceId, p.payment, p.createdBy);
 }
 export async function mintPortalUrl(companyId: string, clientId: string) {
   const { data, error } = await client().rpc("issue_client_portal_token", {
