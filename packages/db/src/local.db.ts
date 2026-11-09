@@ -243,6 +243,27 @@ export interface LocalClient extends SyncMetadata {
   deleted_at: string | null;
 }
 
+
+export interface LocalInvoice extends SyncMetadata {
+  id: string; company_id: string; client_id: string; invoice_number: string;
+  issue_date: string; due_date: string | null; currency_code: string;
+  status: "draft" | "sent" | "partial" | "paid" | "overdue" | "cancelled";
+  subtotal: number; tax_total: number; total: number; paid_amount: number;
+  notes: string | null; archive_id: string | null; created_by: string | null;
+  created_at: string; updated_at: string; deleted_at: string | null;
+}
+export interface LocalInvoiceItem {
+  id: string; company_id: string; invoice_id: string; description: string;
+  quantity: number; unit_price: number; tva_rate: number; line_subtotal: number;
+  line_tax: number; created_at: string; _synced: SyncFlag; _updated_at: string; _deleted: string | null;
+}
+export interface LocalInvoicePayment {
+  id: string; company_id: string; invoice_id: string; payment_date: string;
+  amount: number; payment_method: "cash" | "bank"; reference: string | null;
+  notes: string | null; created_by: string | null; created_at: string;
+  cash_transaction_id: string | null; _synced: SyncFlag; _updated_at: string; _deleted: string | null;
+}
+
 export interface LocalClientAccessToken extends SyncMetadata {
   id: string;
   company_id: string;
@@ -295,6 +316,9 @@ class TaherLocalDatabase extends Dexie {
   profiles!: Table<LocalProfile, string>;
   memberships!: Table<LocalMembership, string>;
   clients!: Table<LocalClient, string>;
+  invoices!: Table<LocalInvoice, string>;
+  invoiceItems!: Table<LocalInvoiceItem, string>;
+  invoicePayments!: Table<LocalInvoicePayment, string>;
   workers!: Table<LocalWorker, string>;
   cashTransactions!: Table<LocalCashTransaction, string>;
   cashOpeningBalances!: Table<LocalCashOpeningBalance, string>;
@@ -345,6 +369,12 @@ class TaherLocalDatabase extends Dexie {
     this.version(4).stores({
       syncStates: "&id, company_id, entity, last_pulled_at"
     });
+
+    this.version(5).stores({
+      invoices: "&id, company_id, client_id, invoice_number, issue_date, status, updated_at, _synced, _deleted, [company_id+client_id], [company_id+issue_date]",
+      invoiceItems: "&id, company_id, invoice_id, created_at, [company_id+invoice_id]",
+      invoicePayments: "&id, company_id, invoice_id, payment_date, created_at, cash_transaction_id, [company_id+invoice_id]"
+    });
   }
 }
 
@@ -369,6 +399,9 @@ export async function clearLocalCompanyData(companyId: string): Promise<void> {
     [
       localDb.memberships,
       localDb.clients,
+      localDb.invoices,
+      localDb.invoiceItems,
+      localDb.invoicePayments,
       localDb.workers,
       localDb.cashTransactions,
       localDb.cashOpeningBalances,
@@ -389,6 +422,9 @@ export async function clearLocalCompanyData(companyId: string): Promise<void> {
       await Promise.all([
         localDb.memberships.where("company_id").equals(companyId).delete(),
         localDb.clients.where("company_id").equals(companyId).delete(),
+        localDb.invoices.where("company_id").equals(companyId).delete(),
+        localDb.invoiceItems.where("company_id").equals(companyId).delete(),
+        localDb.invoicePayments.where("company_id").equals(companyId).delete(),
         localDb.workers.where("company_id").equals(companyId).delete(),
         localDb.cashTransactions.where("company_id").equals(companyId).delete(),
         localDb.cashOpeningBalances.where("company_id").equals(companyId).delete(),

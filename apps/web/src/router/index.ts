@@ -2,6 +2,8 @@ import { createRouter, createWebHistory, type RouteRecordRaw } from "vue-router"
 import { useAuthStore } from "../stores/auth.store";
 
 const routes: RouteRecordRaw[] = [
+  { path: "/portal/:token", name: "clientPortal", component: () => import("../views/ClientPortalView.vue"), meta: { publicPortal: true } },
+  { path: "/invoices", name: "invoices", component: () => import("../views/InvoicesView.vue"), meta: { requiresAuth: true, title: "الفواتير", allowedRoles: ["company_admin", "manager"] } },
   { path: "/login", name: "login", component: () => import("../views/auth/LoginView.vue"), meta: { guestOnly: true } },
   { path: "/setup", name: "setup", component: () => import("../views/auth/SetupView.vue"), meta: { guestOnly: true } },
   { path: "/", name: "dashboard", component: () => import("../views/dashboard/DashboardView.vue"), meta: { requiresAuth: true } },
@@ -24,6 +26,7 @@ const router = createRouter({
 });
 
 router.beforeEach(async (to) => {
+  if (to.meta.publicPortal) return true;
   const auth = useAuthStore();
   if (!auth.initialized) {
     try { await auth.initialize(); }

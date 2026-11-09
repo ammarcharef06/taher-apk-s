@@ -122,3 +122,8 @@ Phase 6 adds offline-first financial reports, dashboard charts, browser-native P
 ## Phase 7 — Platform builds and delivery
 
 The repository now includes a Capacitor Android wrapper, a Tauri 2 Windows wrapper, and three GitHub Actions workflows for Android APK builds, Windows EXE builds, and GitHub Pages deployment. See [docs/PHASE-7-PLATFORM-BUILDS.md](docs/PHASE-7-PLATFORM-BUILDS.md) for setup, required Supabase repository secrets, artifact locations, and validation notes.
+
+
+## Phase 8 — Invoicing and Client Portal
+
+See [docs/PHASE-8-CLIENT-PORTAL.md](docs/PHASE-8-CLIENT-PORTAL.md) for migration order, offline invoice and payment synchronization, cash-box linkage, bearer-link handling, RLS boundaries and acceptance checks. Apply migrations 07 and 08 after testing them in staging. Cash payments create one linked cash-box income movement; bank payments do not change the physical cash balance. Token links are private credentials; authenticated client accounts are required for private archive downloads.

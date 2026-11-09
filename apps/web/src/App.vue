@@ -5,7 +5,7 @@ import AppHeader from "./components/layout/AppHeader.vue";
 import AppSidebar from "./components/layout/AppSidebar.vue";
 
 const route = useRoute();
-const isAuthPage = computed(() => route.meta.guestOnly === true);
+const isAuthPage = computed(() => route.meta.guestOnly === true || route.meta.publicPortal === true);
 </script>
 
 <template>

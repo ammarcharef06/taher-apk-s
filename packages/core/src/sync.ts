@@ -35,6 +35,8 @@ export function sanitizeSyncPayload(
   }
   // amount_ttc is a generated PostgreSQL column; the server calculates it.
   if (entity === "expenses") delete clean.amount_ttc;
+  if (entity === "invoice_items") { delete clean.line_subtotal; delete clean.line_tax; }
+  if (entity === "invoices") { delete clean.subtotal; delete clean.tax_total; delete clean.total; delete clean.paid_amount; }
   return clean;
 }
 
@@ -47,7 +49,11 @@ export const SYNC_ENTITIES = [
   "advances",
   "social_security_declarations",
   "expenses",
-  "archives"
+  "archives",
+  "clients",
+  "invoices",
+  "invoice_items",
+  "invoice_payments"
 ] as const;
 
 export type SyncEntity = (typeof SYNC_ENTITIES)[number];

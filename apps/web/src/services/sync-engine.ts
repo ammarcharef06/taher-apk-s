@@ -25,7 +25,11 @@ const TABLES: Record<SyncEntity, Table<any, any>> = {
   advances: localDb.advances,
   social_security_declarations: localDb.socialSecurityDeclarations,
   expenses: localDb.expenses,
-  archives: localDb.archives
+  archives: localDb.archives,
+  clients: localDb.clients,
+  invoices: localDb.invoices,
+  invoice_items: localDb.invoiceItems,
+  invoice_payments: localDb.invoicePayments
 };
 const PULL_FIELD: Record<SyncEntity, "updated_at" | "created_at"> = {
   workers: "updated_at",
@@ -36,7 +40,11 @@ const PULL_FIELD: Record<SyncEntity, "updated_at" | "created_at"> = {
   advances: "updated_at",
   social_security_declarations: "updated_at",
   expenses: "updated_at",
-  archives: "updated_at"
+  archives: "updated_at",
+  clients: "updated_at",
+  invoices: "updated_at",
+  invoice_items: "created_at",
+  invoice_payments: "created_at"
 };
 
 export interface SyncResult {
@@ -62,11 +70,12 @@ function allowedPullEntities(role: string): SyncEntity[] {
   if (role === "accountant") {
     return [
       "workers", "wages", "wage_payments", "advances",
-      "social_security_declarations", "expenses", "archives"
+      "social_security_declarations", "expenses", "archives",
+      "clients", "invoices", "invoice_items", "invoice_payments"
     ];
   }
   if (role === "data_entry") {
-    return ["workers", "cash_transactions", "advances", "expenses", "archives"];
+    return ["workers", "cash_transactions", "advances", "expenses", "archives", "clients", "invoices", "invoice_items", "invoice_payments"];
   }
   return [];
 }
@@ -108,7 +117,7 @@ async function applyRemoteRecord(
     throw new Error("تجاهل سجل وارد لا يطابق الشركة الحالية.");
   }
   const table = TABLES[entity];
-  return localDb.transaction("rw", [table, localDb.syncQueue, localDb.correctionLogs], async () => {
+  return localDb.transaction("rw", [table, localDb.syncQueue, localDb.correctionLogs, localDb.invoicePayments, localDb.invoiceItems], async () => {
     let local = await table.get(recordId);
     // Financial inserts may create their archive row server-side before the local
     // archive queue item arrives. Match that row by its natural source key.
@@ -154,8 +163,41 @@ async function applyRemoteRecord(
       file_size: remote.file_size ?? localArchive.file_size,
       storage_path: remote.storage_path ?? localArchive.storage_path
     } : {};
+    let acceptedRemote = remote;
+    if (entity === "invoices") {
+      // Keep locally calculated totals visible while one or more item inserts
+      // remain queued. The server recalculates them after each accepted item.
+      const pendingItems = await localDb.invoiceItems
+        .where("[company_id+invoice_id]").equals([companyId, recordId])
+        .and((item) => item._synced === 0)
+        .toArray();
+      if (pendingItems.length > 0 && local) {
+        acceptedRemote = {
+          ...remote,
+          subtotal: local.subtotal,
+          tax_total: local.tax_total,
+          total: local.total
+        };
+      }
+      // Keep unpushed local payments visible if a pull races a failed/interrupted
+      // payment push. Once the payment RPC is accepted, its row is marked synced.
+      const pendingPayments = await localDb.invoicePayments
+        .where("[company_id+invoice_id]").equals([companyId, recordId])
+        .and((payment) => payment._synced === 0)
+        .toArray();
+      if (pendingPayments.length > 0) {
+        const paid = Number(acceptedRemote.paid_amount ?? remote.paid_amount ?? 0) +
+          pendingPayments.reduce((sum, payment) => sum + Number(payment.amount || 0), 0);
+        const total = Number(acceptedRemote.total ?? remote.total ?? 0);
+        acceptedRemote = {
+          ...acceptedRemote,
+          paid_amount: Math.round((paid + Number.EPSILON) * 100) / 100,
+          status: total > 0 && paid >= total ? "paid" : paid > 0 ? "partial" : acceptedRemote.status
+        };
+      }
+    }
     await table.put({
-      ...remote,
+      ...acceptedRemote,
       ...localOnly,
       _synced: 1,
       _updated_at: updatedAt,
@@ -182,9 +224,15 @@ async function pushPending(companyId: string): Promise<{ pushed: number; conflic
     group.push(item);
     groups.set(key, group);
   }
-  const latestGroups = [...groups.values()].sort((a, b) =>
-    (a[a.length - 1]?.created_at ?? "").localeCompare(b[b.length - 1]?.created_at ?? "")
-  );
+  const entityPriority: Record<string, number> = {
+    clients: 0, invoices: 1, invoice_items: 2, invoice_payments: 3
+  };
+  const latestGroups = [...groups.values()].sort((a, b) => {
+    const left = a[a.length - 1], right = b[b.length - 1];
+    const timeOrder = (left?.created_at ?? "").localeCompare(right?.created_at ?? "");
+    if (timeOrder !== 0) return timeOrder;
+    return (entityPriority[left?.entity ?? ""] ?? 4) - (entityPriority[right?.entity ?? ""] ?? 4);
+  });
 
   let pushed = 0;
   let conflicts = 0;
@@ -199,14 +247,27 @@ async function pushPending(companyId: string): Promise<{ pushed: number; conflic
     ));
     try {
       const payload = sanitizeSyncPayload(item.entity, asRecord(item.payload));
-      const { data, error } = await supabase.rpc("sync_apply_record", {
-        p_entity: item.entity,
-        p_record: payload
-      });
-      if (error) throw new Error(error.message);
-      const response = asRecord(data);
+      let responseData: unknown;
+      if (item.entity === "invoice_payments") {
+        const { data, error } = await supabase.rpc("sync_apply_invoice_payment", { p_record: payload });
+        if (error) throw new Error(error.message);
+        responseData = data;
+      } else {
+        const { data, error } = await supabase.rpc("sync_apply_record", {
+          p_entity: item.entity,
+          p_record: payload
+        });
+        if (error) throw new Error(error.message);
+        responseData = data;
+      }
+      const response = asRecord(responseData);
       const remote = asRecord(response.record);
-      if (response.applied === false && item.entity !== "wage_payments") {
+      if (item.entity === "invoice_payments") {
+        await applyRemoteRecord(companyId, "invoice_payments", remote, true);
+        if (response.cash_transaction) {
+          await applyRemoteRecord(companyId, "cash_transactions", asRecord(response.cash_transaction), true);
+        }
+      } else if (response.applied === false && item.entity !== "wage_payments") {
         conflicts += 1;
         await applyRemoteRecord(
           companyId,
