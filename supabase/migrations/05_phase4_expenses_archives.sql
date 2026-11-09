@@ -20,7 +20,7 @@ begin
   end if;
 end $$;
 
-do $1
+do $$
   if not exists (select 1 from pg_constraint where conname = 'archives_file_metadata_check') then
     alter table public.archives
       add constraint archives_file_metadata_check
@@ -29,7 +29,7 @@ do $1
         and (mime_type is null or mime_type in ('application/pdf','image/jpeg','image/png','image/webp'))
       );
   end if;
-end $;
+end $$;
 
 create index if not exists expenses_company_payment_date_idx
   on public.expenses(company_id, payment_method, expense_date desc)
