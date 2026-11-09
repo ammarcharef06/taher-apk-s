@@ -9,7 +9,12 @@ create unique index if not exists cash_transactions_company_id_id_unique
 alter table public.invoice_payments
   add column if not exists cash_transaction_id uuid;
 
-do $$
+-- Force all invoice payment writes through the atomic RPC; a direct table insert
+-- could otherwise create a cash payment without its matching cash-box movement.
+revoke insert,update,delete on public.invoice_payments from authenticated;
+grant select on public.invoice_payments to authenticated;
+
+do $
 begin
   if not exists (
     select 1 from pg_constraint
