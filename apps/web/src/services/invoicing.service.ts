@@ -17,8 +17,8 @@ export type InvoiceLine = { description: string; quantity: number; unit_price: n
 export async function listClients(companyId: string) {
   return listLocalClients(companyId);
 }
-export async function addClient(companyId: string, input: { name: string; email: string; phone: string }, createdBy: string | null) {
-  return createLocalClient(companyId, input, createdBy);
+export async function addClient(companyId: string, input: { name: string; email: string; phone: string }) {
+  return createLocalClient(companyId, input);
 }
 export async function listInvoices(companyId: string) {
   return listLocalInvoices(companyId);
