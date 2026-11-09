@@ -14,7 +14,7 @@ alter table public.invoice_payments
 revoke insert,update,delete on public.invoice_payments from authenticated;
 grant select on public.invoice_payments to authenticated;
 
-do $
+do $$
 begin
   if not exists (
     select 1 from pg_constraint
