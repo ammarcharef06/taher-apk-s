@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useToast } from "../composables/toast";
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from "vue";
 import {
   createWage,
@@ -21,6 +22,7 @@ import { useAuthStore } from "../stores/auth.store";
 import WageReceipt from "../components/wages/WageReceipt.vue";
 
 const auth = useAuthStore();
+const toast = useToast();
 const companyId = computed(() => auth.activeMembership?.company_id ?? "");
 const canManage = computed(
   () => auth.activeRole === "company_admin" || auth.activeRole === "manager"
@@ -46,6 +48,7 @@ const loading = ref(false);
 const submitting = ref(false);
 const errorMessage = ref("");
 const successMessage = ref("");
+watch([errorMessage, successMessage], ([failure, success]) => { if (failure) toast.error(failure); if (success) toast.success(success); });
 const formOpen = ref(false);
 const paymentOpen = ref(false);
 const historyOpen = ref(false);
