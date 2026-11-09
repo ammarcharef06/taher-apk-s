@@ -69,7 +69,7 @@ function allowedPullEntities(role: string): SyncEntity[] {
   }
   if (role === "accountant") {
     return [
-      "workers", "wages", "wage_payments", "advances",
+      "workers", "cash_transactions", "wages", "wage_payments", "advances",
       "social_security_declarations", "expenses", "archives",
       "clients", "invoices", "invoice_items", "invoice_payments"
     ];
