@@ -140,6 +140,7 @@ export async function recordLocalInvoicePayment(companyId: string, invoiceId: st
     return await localDb.transaction("rw",[localDb.clients,localDb.invoices,localDb.invoicePayments,localDb.cashTransactions,localDb.syncQueue],async()=>{
       const invoice=await localDb.invoices.get(invoiceId);
       if(!invoice||invoice.company_id!==companyId||invoice.deleted_at!==null) throw new Error("الفاتورة غير موجودة في هذه الشركة.");
+      if(invoice.status==="draft"||invoice.status==="cancelled") throw new Error("لا يمكن تسجيل دفعة لفاتورة مسودة أو ملغاة.");
       const client=await localDb.clients.get(invoice.client_id);
       if(!client||client.company_id!==companyId) throw new Error("العميل المرتبط بالفاتورة غير متاح.");
       const remaining=roundMoney(invoice.total-invoice.paid_amount);
